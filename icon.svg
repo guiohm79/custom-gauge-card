@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="#1a1a2e" stroke="#16213e" stroke-width="2"/>
+
+  <!-- Outer gauge ring -->
+  <circle cx="100" cy="100" r="85" fill="none" stroke="#2d3561" stroke-width="8"/>
+
+  <!-- LED indicators (inactive) -->
+  <circle cx="100" cy="15" r="4" fill="#333" opacity="0.6"/>
+  <circle cx="141.4" cy="23.4" r="4" fill="#333" opacity="0.6"/>
+  <circle cx="173.2" cy="46.8" r="4" fill="#333" opacity="0.6"/>
+  <circle cx="184.6" cy="81.3" r="4" fill="#333" opacity="0.6"/>
+  <circle cx="184.6" cy="118.7" r="4" fill="#333" opacity="0.6"/>
+  <circle cx="173.2" cy="153.2" r="4" fill="#333" opacity="0.6"/>
+  <circle cx="141.4" cy="176.6" r="4" fill="#333" opacity="0.6"/>
+  <circle cx="100" cy="185" r="4" fill="#333" opacity="0.6"/>
+  <circle cx="58.6" cy="176.6" r="4" fill="#333" opacity="0.6"/>
+  <circle cx="26.8" cy="153.2" r="4" fill="#333" opacity="0.6"/>
+  <circle cx="15.4" cy="118.7" r="4" fill="#333" opacity="0.6"/>
+
+  <!-- LED indicators (active - green) -->
+  <circle cx="100" cy="15" r="4" fill="#04fb1d">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="141.4" cy="23.4" r="4" fill="#04fb1d">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" begin="0.1s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="173.2" cy="46.8" r="4" fill="#04fb1d">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" begin="0.2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="184.6" cy="81.3" r="4" fill="#ffeb3b">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" begin="0.3s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="184.6" cy="118.7" r="4" fill="#ffeb3b">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" begin="0.4s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="173.2" cy="153.2" r="4" fill="#ff9800">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="141.4" cy="176.6" r="4" fill="#ff2d00">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" begin="0.6s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Glow effect for active LEDs -->
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Center circle background -->
+  <circle cx="100" cy="100" r="60" fill="url(#centerGradient)" filter="url(#glow)"/>
+
+  <defs>
+    <radialGradient id="centerGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#2d3561;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+
+  <!-- Value text -->
+  <text x="100" y="95" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle">75</text>
+
+  <!-- Unit text -->
+  <text x="100" y="115" font-family="Arial, sans-serif" font-size="14" fill="#aaaaaa" text-anchor="middle">%</text>
+</svg>
