@@ -103,6 +103,12 @@ custom_center_background: "radial-gradient(circle, #333, #111)"
 custom_text_color: "#ffffff"
 custom_secondary_text_color: "#aaaaaa"
 
+# Personnalisation de la police du titre
+title_font_family: "Roboto, Arial, sans-serif"
+title_font_size: "18px"
+title_font_weight: "bold"
+# title_font_color: "#00ff00"  # Optionnel: couleur personnalisée pour le titre
+
 # Animations
 smooth_transitions: true
 animation_duration: 800
@@ -193,6 +199,43 @@ optimize_leds: true
 | `custom_center_background` | string | - | Fond du centre (thème custom) |
 | `custom_text_color` | string | - | Couleur du texte (thème custom) |
 | `custom_secondary_text_color` | string | - | Couleur du texte secondaire (thème custom) |
+
+### Personnalisation de la Police du Titre
+
+| Option | Type | Défaut | Description |
+|--------|------|--------|-------------|
+| `title_font_family` | string | `inherit` | Police de caractères pour le titre (ex: "Roboto, Arial, sans-serif") |
+| `title_font_size` | string | `16px` | Taille de la police pour le titre |
+| `title_font_weight` | string | `normal` | Épaisseur de la police pour le titre (ex: "normal", "bold", "600") |
+| `title_font_color` | string | - | Couleur personnalisée pour le titre (remplace la couleur du thème) |
+
+**Exemples de Polices pour le Titre :**
+
+```yaml
+# Style moderne
+title_font_family: "Roboto, Helvetica, Arial, sans-serif"
+title_font_size: "18px"
+title_font_weight: "500"
+
+# Style élégant
+title_font_family: "Georgia, 'Times New Roman', serif"
+title_font_size: "20px"
+title_font_weight: "normal"
+
+# Style technique/monospace
+title_font_family: "Consolas, 'Courier New', monospace"
+title_font_size: "16px"
+title_font_weight: "bold"
+
+# Utiliser la police par défaut de Home Assistant
+title_font_family: "inherit"
+
+# Gras avec couleur personnalisée
+title_font_family: "Arial, sans-serif"
+title_font_size: "22px"
+title_font_weight: "bold"
+title_font_color: "#00ff00"
+```
 
 ### Animations
 

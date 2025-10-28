@@ -8,6 +8,11 @@ leds_count: 150
 decimals: 0
 animation_duration: 800
 smooth_transitions: true
+# Configuration de la police du titre
+title_font_family: "Roboto, Arial, sans-serif"
+title_font_size: "18px"
+title_font_weight: "bold"
+# title_font_color: "#00ff00"  # Optionnel: couleur personnalisée
 theme: dark
 custom_background: "#2c2c2c"
 custom_gauge_background: "radial-gradient(circle, #444, #222)"
@@ -47,10 +52,18 @@ power_save_threshold: 20
 update_interval: 1000
 debounce_updates: true
 optimize_leds: true
-# Configuration du bouton switch (optionnel)
-show_switch_button: true
-switch_entity: switch.refoulement_cuve_1
-switch_button_position: bottom-right  # Options: top-left, top-right, bottom-left, bottom-right
+# Configuration des boutons (nouveau système multi-boutons)
+buttons:
+  - entity: switch.refoulement_cuve_1
+    position: bottom-right
+    icon: "⏻"  # Optionnel, icône par défaut selon le type
+  - entity: light.led_cuve_1
+    position: top-right
+    icon: "💡"
+  - entity: script.remplir_cuve
+    position: bottom-left
+    icon: "▶"
+# Note: L'ancienne config (show_switch_button, switch_entity) est toujours supportée pour rétrocompatibilité
 severity:
   - color: "#ff2d00"
     value: 25

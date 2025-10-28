@@ -25,10 +25,11 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 - Percentage change with directional arrow
 - Automatic history from Home Assistant
 
-🎮 **Switch Control**
-- Control switches directly from the gauge
-- Optional switch button with customizable position
-- Toggle on/off with visual feedback
+🎮 **Multi-Button Control**
+- Control multiple entities directly from the gauge
+- Support for switches, lights, scenes, scripts, automations and more
+- Up to 4 buttons with customizable positions
+- Smart icons and visual feedback
 
 ⚡ **Optimized Performance**
 - Power save mode (pauses when invisible)
@@ -103,6 +104,12 @@ custom_center_background: "radial-gradient(circle, #333, #111)"
 custom_text_color: "#ffffff"
 custom_secondary_text_color: "#aaaaaa"
 
+# Title font customization
+title_font_family: "Roboto, Arial, sans-serif"
+title_font_size: "18px"
+title_font_weight: "bold"
+# title_font_color: "#00ff00"  # Optional: custom title color
+
 # Animations
 smooth_transitions: true
 animation_duration: 800
@@ -149,10 +156,16 @@ severity:
   - color: "#04fb1d"
     value: 100
 
-# Switch button (optional)
-show_switch_button: true
-switch_entity: switch.pump_1
-switch_button_position: bottom-right  # Options: top-left, top-right, bottom-left, bottom-right
+# Multi-button control (optional)
+buttons:
+  - entity: switch.pump_1
+    position: bottom-right
+    icon: "⏻"  # Optional, defaults to entity type icon
+  - entity: light.tank_led
+    position: top-right
+  - entity: script.fill_tank
+    position: bottom-left
+    icon: "▶"
 
 # Optimizations
 power_save_mode: true
@@ -195,6 +208,43 @@ optimize_leds: true
 | `custom_text_color` | string | - | Text color (custom theme) |
 | `custom_secondary_text_color` | string | - | Secondary text color (custom theme) |
 
+### Title Font Customization
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `title_font_family` | string | `inherit` | Font family for the title (e.g., "Roboto, Arial, sans-serif") |
+| `title_font_size` | string | `16px` | Font size for the title |
+| `title_font_weight` | string | `normal` | Font weight for the title (e.g., "normal", "bold", "600") |
+| `title_font_color` | string | - | Custom color for the title (overrides theme color) |
+
+**Title Font Examples:**
+
+```yaml
+# Modern style
+title_font_family: "Roboto, Helvetica, Arial, sans-serif"
+title_font_size: "18px"
+title_font_weight: "500"
+
+# Elegant style
+title_font_family: "Georgia, 'Times New Roman', serif"
+title_font_size: "20px"
+title_font_weight: "normal"
+
+# Technical/monospace style
+title_font_family: "Consolas, 'Courier New', monospace"
+title_font_size: "16px"
+title_font_weight: "bold"
+
+# Use Home Assistant default font
+title_font_family: "inherit"
+
+# Bold with custom color
+title_font_family: "Arial, sans-serif"
+title_font_size: "22px"
+title_font_weight: "bold"
+title_font_color: "#00ff00"
+```
+
 ### Animations
 
 | Option | Type | Default | Description |
@@ -216,9 +266,33 @@ optimize_leds: true
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `show_trend` | boolean | false | Show 24h trend indicator |
-| `show_switch_button` | boolean | false | Show a switch control button |
-| `switch_entity` | string | - | Switch entity to control |
-| `switch_button_position` | string | `bottom-right` | Button position: `top-left`, `top-right`, `bottom-left`, `bottom-right` |
+| `buttons` | list | `[]` | List of button configurations (see Multi-Button Control below) |
+
+### Multi-Button Control
+
+Configure multiple buttons to control various entities:
+
+```yaml
+buttons:
+  - entity: switch.my_switch
+    position: bottom-right  # top-left, top-right, bottom-left, bottom-right
+    icon: "⏻"  # Optional, defaults to entity type
+```
+
+**Supported Entity Types:**
+- `switch` - Toggle switch on/off (⏻)
+- `light` - Toggle light on/off (💡)
+- `scene` - Activate scene (🎬)
+- `script` - Execute script (▶)
+- `input_boolean` - Toggle boolean (⏻)
+- `automation` - Toggle automation (🤖)
+- `fan` - Toggle fan (🌀)
+- `cover` - Open/close cover (🪟)
+- `climate` - Toggle climate (🌡️)
+- `lock` - Lock/unlock (🔒)
+- `vacuum` - Start/stop vacuum (🤖)
+
+**Note:** Old configuration format (`show_switch_button`, `switch_entity`, `switch_button_position`) is still supported for backward compatibility.
 
 ### Markers and Zones
 
@@ -286,7 +360,7 @@ zones:
     opacity: 0.3
 ```
 
-### Power Consumption with Switch Control
+### Power Consumption with Multi-Button Control
 
 ```yaml
 type: custom:custom-gauge-card
@@ -297,14 +371,51 @@ min: 0
 max: 5000
 smooth_transitions: true
 animation_duration: 600
-# Add a switch button to control a device
-show_switch_button: true
-switch_entity: switch.main_power
-switch_button_position: bottom-right
+# Add multiple control buttons
+buttons:
+  - entity: switch.main_power
+    position: bottom-right
+  - entity: light.power_indicator
+    position: top-right
+  - entity: script.reset_counter
+    position: bottom-left
+    icon: "🔄"
 markers:
   - value: 2000
     color: "#ffeb3b"
     label: Limit
+```
+
+### Smart Home Control Hub
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.room_temperature
+name: Living Room
+unit: "°C"
+min: 15
+max: 30
+# Control multiple devices from one gauge
+buttons:
+  - entity: light.living_room
+    position: top-left
+    icon: "💡"
+  - entity: switch.ac_unit
+    position: top-right
+    icon: "❄️"
+  - entity: scene.movie_mode
+    position: bottom-left
+    icon: "🎬"
+  - entity: automation.night_routine
+    position: bottom-right
+    icon: "🌙"
+severity:
+  - color: "#00bfff"
+    value: 40
+  - color: "#4caf50"
+    value: 70
+  - color: "#ff9800"
+    value: 100
 ```
 
 ### Water Tank Level with Multiple Zones

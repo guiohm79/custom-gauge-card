@@ -13,17 +13,29 @@ class CustomGaugeCard extends HTMLElement {
       debounce_updates: config.debounce_updates || false, // Limiter les mises à jour rapides
       smooth_transitions: config.smooth_transitions !== false, // Activé par défaut
       animation_duration: config.animation_duration || 800, // Durée des animations
-      // Configuration du bouton switch
-      show_switch_button: config.show_switch_button || false, // Afficher le bouton switch
-      switch_entity: config.switch_entity || null, // Entité switch à contrôler
-      switch_button_position: config.switch_button_position || 'bottom-right' // Position du bouton
+      // Configuration des boutons (nouveau système)
+      buttons: config.buttons || [],
+      // Configuration de la police du titre
+      title_font_family: config.title_font_family || 'inherit',
+      title_font_size: config.title_font_size || '16px',
+      title_font_weight: config.title_font_weight || 'normal',
+      title_font_color: config.title_font_color || null // null = utiliser la couleur du thème
     };
+
+    // Rétrocompatibilité : convertir l'ancienne config switch en format buttons
+    if (config.show_switch_button && config.switch_entity && this.config.buttons.length === 0) {
+      this.config.buttons = [{
+        entity: config.switch_entity,
+        position: config.switch_button_position || 'bottom-right',
+        icon: null // Icône par défaut sera déterminée automatiquement
+      }];
+    }
     
     this.previousState = null; // Stocker l'état précédent
     this.updateTimer = null;
     this.isVisible = true; // Par défaut, la carte est visible
     this.animationInterval = null; // Pour suivre l'animation en cours
-    this.switchInitialized = false; // Flag pour initialiser le bouton switch une seule fois
+    this.buttonsInitialized = false; // Flag pour initialiser les boutons une seule fois
     
     this.attachShadow({ mode: "open" });
     this.render();
@@ -61,10 +73,10 @@ class CustomGaugeCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
 
-    // Initialiser le bouton switch une seule fois quand hass est disponible
-    if (!this.switchInitialized && this.shadowRoot) {
-      this._createSwitchButton();
-      this.switchInitialized = true;
+    // Initialiser les boutons une seule fois quand hass est disponible
+    if (!this.buttonsInitialized && this.shadowRoot) {
+      this._createButtons();
+      this.buttonsInitialized = true;
     }
 
     // Si le mode économie d'énergie est actif et que la carte n'est pas visible, ne pas mettre à jour
@@ -116,8 +128,8 @@ class CustomGaugeCard extends HTMLElement {
     // Stocker l'état actuel pour la prochaine mise à jour
     this.previousState = state;
 
-    // Mettre à jour le bouton switch si présent
-    this._updateSwitchButton();
+    // Mettre à jour tous les boutons
+    this._updateButtonsState();
   }
 
   // Animation pour les changements de valeur
@@ -300,8 +312,10 @@ class CustomGaugeCard extends HTMLElement {
         }
         .title {
           margin-top: 10px;
-          font-size: 16px;
-          color: ${currentTheme.textColor};
+          font-size: ${this.config.title_font_size};
+          font-family: ${this.config.title_font_family};
+          font-weight: ${this.config.title_font_weight};
+          color: ${this.config.title_font_color || currentTheme.textColor};
           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
         }
         .trend-indicator {
@@ -481,82 +495,201 @@ class CustomGaugeCard extends HTMLElement {
     this.dispatchEvent(event);
   }
 
-  // Créer et gérer le bouton switch
-  _createSwitchButton() {
-    if (!this.config.show_switch_button || !this.config.switch_entity || !this._hass) return;
+  // Obtenir le type d'entité à partir de l'entity_id
+  _getEntityType(entityId) {
+    if (!entityId) return null;
+    return entityId.split('.')[0];
+  }
 
-    const switchEntity = this.config.switch_entity;
-    const stateObj = this._hass.states[switchEntity];
+  // Obtenir l'icône par défaut selon le type d'entité
+  _getDefaultIcon(entityType) {
+    const icons = {
+      'switch': '⏻',
+      'light': '💡',
+      'scene': '🎬',
+      'script': '▶',
+      'input_boolean': '⏻',
+      'automation': '🤖',
+      'fan': '🌀',
+      'cover': '🪟',
+      'climate': '🌡️',
+      'lock': '🔒',
+      'vacuum': '🤖'
+    };
+    return icons[entityType] || '⏻'; // Icône par défaut si type inconnu
+  }
 
-    if (!stateObj) {
-      console.warn(`Switch entity ${switchEntity} not found`);
-      return;
-    }
+  // Obtenir l'état d'une entité (on/off, etc.)
+  _getEntityState(entityId) {
+    if (!this._hass || !entityId) return null;
+    const stateObj = this._hass.states[entityId];
+    return stateObj ? stateObj.state : null;
+  }
 
-    // Vérifier si le bouton existe déjà
-    let switchButton = this.shadowRoot.querySelector('.switch-button');
+  // Créer tous les boutons configurés
+  _createButtons() {
+    if (!this._hass || !this.config.buttons || this.config.buttons.length === 0) return;
 
-    if (!switchButton) {
-      // Créer le bouton
-      switchButton = document.createElement('div');
-      switchButton.className = `switch-button ${this.config.switch_button_position}`;
-      switchButton.innerHTML = '⏻'; // Symbole power Unicode
+    const gaugeContainer = this.shadowRoot.getElementById('gauge-container');
+    if (!gaugeContainer) return;
 
-      // Ajouter le gestionnaire de clic
-      switchButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this._toggleSwitch();
-      });
+    // Créer chaque bouton
+    this.config.buttons.forEach((buttonConfig, index) => {
+      const entityId = buttonConfig.entity;
+      if (!entityId) return;
 
-      // Ajouter le bouton au conteneur
-      const gaugeContainer = this.shadowRoot.getElementById('gauge-container');
-      if (gaugeContainer) {
-        gaugeContainer.appendChild(switchButton);
+      const stateObj = this._hass.states[entityId];
+      if (!stateObj) {
+        console.warn(`Entity ${entityId} not found`);
+        return;
       }
+
+      // Vérifier si le bouton existe déjà
+      const buttonId = `button-${index}`;
+      let button = this.shadowRoot.getElementById(buttonId);
+
+      if (!button) {
+        // Déterminer l'icône à utiliser
+        const entityType = this._getEntityType(entityId);
+        const icon = buttonConfig.icon || this._getDefaultIcon(entityType);
+        const position = buttonConfig.position || 'bottom-right';
+
+        // Créer le bouton
+        button = document.createElement('div');
+        button.id = buttonId;
+        button.className = `switch-button ${position}`;
+        button.innerHTML = icon;
+        button.dataset.entity = entityId;
+        button.dataset.index = index;
+
+        // Ajouter le gestionnaire de clic
+        button.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this._handleButtonClick(entityId);
+        });
+
+        // Ajouter le bouton au conteneur
+        gaugeContainer.appendChild(button);
+      }
+    });
+
+    // Mettre à jour l'état visuel de tous les boutons
+    this._updateButtonsState();
+  }
+
+  // Mettre à jour l'état visuel de tous les boutons
+  _updateButtonsState() {
+    if (!this._hass || !this.config.buttons || this.config.buttons.length === 0) return;
+
+    this.config.buttons.forEach((buttonConfig, index) => {
+      const entityId = buttonConfig.entity;
+      const button = this.shadowRoot.getElementById(`button-${index}`);
+
+      if (!button || !entityId) return;
+
+      const stateObj = this._hass.states[entityId];
+      if (!stateObj) return;
+
+      const state = stateObj.state;
+      const isOn = ['on', 'open', 'unlocked', 'home', 'active'].includes(state);
+
+      // Mettre à jour les classes CSS
+      button.classList.remove('on', 'off');
+      button.classList.add(isOn ? 'on' : 'off');
+
+      // Ajouter un titre pour l'accessibilité
+      const friendlyName = stateObj.attributes.friendly_name || entityId;
+      button.title = `${friendlyName}: ${state.toUpperCase()}`;
+    });
+  }
+
+  // Gérer le clic sur un bouton (multi-types)
+  _handleButtonClick(entityId) {
+    if (!entityId || !this._hass) return;
+
+    const stateObj = this._hass.states[entityId];
+    if (!stateObj) return;
+
+    const entityType = this._getEntityType(entityId);
+    const currentState = stateObj.state;
+
+    let domain, service, serviceData;
+
+    // Déterminer le service à appeler selon le type d'entité
+    switch (entityType) {
+      case 'switch':
+      case 'light':
+      case 'input_boolean':
+      case 'fan':
+        // Toggle pour ces types
+        domain = entityType;
+        service = 'toggle';
+        serviceData = { entity_id: entityId };
+        break;
+
+      case 'automation':
+        // Toggle automation
+        domain = 'automation';
+        service = 'toggle';
+        serviceData = { entity_id: entityId };
+        break;
+
+      case 'scene':
+        // Activer la scène
+        domain = 'scene';
+        service = 'turn_on';
+        serviceData = { entity_id: entityId };
+        break;
+
+      case 'script':
+        // Exécuter le script
+        domain = 'script';
+        service = 'turn_on';
+        serviceData = { entity_id: entityId };
+        break;
+
+      case 'cover':
+        // Toggle open/close pour les covers
+        domain = 'cover';
+        service = currentState === 'open' ? 'close_cover' : 'open_cover';
+        serviceData = { entity_id: entityId };
+        break;
+
+      case 'lock':
+        // Toggle lock/unlock
+        domain = 'lock';
+        service = currentState === 'locked' ? 'unlock' : 'lock';
+        serviceData = { entity_id: entityId };
+        break;
+
+      case 'vacuum':
+        // Toggle start/stop
+        domain = 'vacuum';
+        service = currentState === 'cleaning' ? 'stop' : 'start';
+        serviceData = { entity_id: entityId };
+        break;
+
+      case 'climate':
+        // Toggle climate on/off
+        domain = 'climate';
+        service = currentState === 'off' ? 'turn_on' : 'turn_off';
+        serviceData = { entity_id: entityId };
+        break;
+
+      default:
+        console.warn(`Entity type ${entityType} not supported for button control`);
+        return;
     }
 
-    // Mettre à jour l'état visuel du bouton
-    this._updateSwitchButton();
-  }
-
-  // Mettre à jour l'apparence du bouton switch selon l'état
-  _updateSwitchButton() {
-    if (!this.config.show_switch_button || !this.config.switch_entity || !this._hass) return;
-
-    const switchButton = this.shadowRoot.querySelector('.switch-button');
-    if (!switchButton) return;
-
-    const stateObj = this._hass.states[this.config.switch_entity];
-    if (!stateObj) return;
-
-    const isOn = stateObj.state === 'on';
-
-    // Mettre à jour les classes CSS
-    switchButton.classList.remove('on', 'off');
-    switchButton.classList.add(isOn ? 'on' : 'off');
-
-    // Ajouter un titre pour l'accessibilité
-    switchButton.title = `${stateObj.attributes.friendly_name || this.config.switch_entity}: ${isOn ? 'ON' : 'OFF'}`;
-  }
-
-  // Toggle le switch
-  _toggleSwitch() {
-    if (!this.config.switch_entity || !this._hass) return;
-
-    const stateObj = this._hass.states[this.config.switch_entity];
-    if (!stateObj) return;
-
-    const isOn = stateObj.state === 'on';
-    const service = isOn ? 'turn_off' : 'turn_on';
-
-    this._hass.callService('switch', service, {
-      entity_id: this.config.switch_entity
-    }).then(() => {
-      // Mettre à jour immédiatement l'apparence du bouton
-      setTimeout(() => this._updateSwitchButton(), 100);
-    }).catch(error => {
-      console.error('Error toggling switch:', error);
-    });
+    // Appeler le service
+    this._hass.callService(domain, service, serviceData)
+      .then(() => {
+        // Mettre à jour l'apparence des boutons après un court délai
+        setTimeout(() => this._updateButtonsState(), 100);
+      })
+      .catch(error => {
+        console.error(`Error calling ${domain}.${service}:`, error);
+      });
   }
 
   // Ajouter une méthode pour l'accessibilité
