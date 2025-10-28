@@ -405,7 +405,7 @@ class CustomGaugeCard extends HTMLElement {
           ${Array.from({ length: ledsCount })
             .map(
               (_, i) =>
-                `<div class="led" id="led-${i}" style="transform: rotate(${(i / ledsCount) * 360}deg) translate(${gaugeSize / 2 - ledSize}px);"></div>`
+                `<div class="led" id="led-${i}" style="transform: rotate(${(i / ledsCount) * 360 - 90}deg) translate(${gaugeSize / 2 - ledSize}px);"></div>`
             )
             .join("")}
           <div class="center">
@@ -815,7 +815,7 @@ class CustomGaugeCard extends HTMLElement {
           height: 12px;
           background: ${marker.color || '#fff'};
           border-radius: 2px;
-          transform: rotate(${angle}deg) translateY(-${gaugeSize / 2 - 5}px);
+          transform: rotate(${angle - 90}deg) translateX(${gaugeSize / 2 - 5}px);
           transform-origin: center center;
           z-index: 2;
           box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
@@ -830,7 +830,7 @@ class CustomGaugeCard extends HTMLElement {
             position: absolute;
             font-size: 10px;
             color: ${marker.color || '#fff'};
-            transform: rotate(${angle}deg) translateY(-${gaugeSize / 2 + 15}px);
+            transform: rotate(${angle - 90}deg) translateX(${gaugeSize / 2 + 15}px) rotate(${90 - angle}deg);
             transform-origin: center center;
             z-index: 2;
             text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
