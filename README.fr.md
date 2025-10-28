@@ -70,7 +70,7 @@ Une carte personnalisée pour Home Assistant qui affiche vos capteurs sous forme
 ### Configuration Minimale
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.temperature
 name: Température
 unit: "°C"
@@ -81,7 +81,7 @@ max: 40
 ### Configuration Complète
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.niveaux_cuves_capteur_niveau_cuve_1
 name: Niveau cuve 1
 unit: L
@@ -241,7 +241,7 @@ optimize_leds: true
 ### Jauge de Température
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.temperature_salon
 name: Température Salon
 unit: "°C"
@@ -261,7 +261,7 @@ severity:
 ### Niveau de Batterie
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.phone_battery
 name: Batterie Téléphone
 unit: "%"
@@ -287,7 +287,7 @@ zones:
 ### Consommation Électrique Contrôlable
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.power_consumption
 name: Consommation
 unit: W
@@ -309,10 +309,6 @@ markers:
 - Tous les navigateurs modernes supportant les Web Components
 - Compatible mobile et tablette
 
-## Problèmes Connus
-
-- L'indicateur de tendance nécessite un historique disponible (recorder actif)
-- Le contrôle interactif fonctionne uniquement avec `input_number` et entités `number`
 
 ## Contribution
 

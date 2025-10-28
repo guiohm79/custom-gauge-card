@@ -47,8 +47,10 @@ power_save_threshold: 20
 update_interval: 1000
 debounce_updates: true
 optimize_leds: true
-enable_control: true
-controlable_entity: input_number.cuve_1_niveau_cible
+# Configuration du bouton switch (optionnel)
+show_switch_button: true
+switch_entity: switch.refoulement_cuve_1
+switch_button_position: bottom-right  # Options: top-left, top-right, bottom-left, bottom-right
 severity:
   - color: "#ff2d00"
     value: 25

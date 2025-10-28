@@ -12,14 +12,18 @@ class CustomGaugeCard extends HTMLElement {
       power_save_threshold: config.power_save_threshold || 10, // Seuil de visibilité pour mode économie
       debounce_updates: config.debounce_updates || false, // Limiter les mises à jour rapides
       smooth_transitions: config.smooth_transitions !== false, // Activé par défaut
-      animation_duration: config.animation_duration || 800 // Durée des animations
+      animation_duration: config.animation_duration || 800, // Durée des animations
+      // Configuration du bouton switch
+      show_switch_button: config.show_switch_button || false, // Afficher le bouton switch
+      switch_entity: config.switch_entity || null, // Entité switch à contrôler
+      switch_button_position: config.switch_button_position || 'bottom-right' // Position du bouton
     };
     
     this.previousState = null; // Stocker l'état précédent
     this.updateTimer = null;
     this.isVisible = true; // Par défaut, la carte est visible
-    this.isControlling = false; // Suivi du contrôle interactif
     this.animationInterval = null; // Pour suivre l'animation en cours
+    this.switchInitialized = false; // Flag pour initialiser le bouton switch une seule fois
     
     this.attachShadow({ mode: "open" });
     this.render();
@@ -56,16 +60,22 @@ class CustomGaugeCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    
+
+    // Initialiser le bouton switch une seule fois quand hass est disponible
+    if (!this.switchInitialized && this.shadowRoot) {
+      this._createSwitchButton();
+      this.switchInitialized = true;
+    }
+
     // Si le mode économie d'énergie est actif et que la carte n'est pas visible, ne pas mettre à jour
     if (this.config.power_save_mode && !this.isVisible) return;
-    
+
     // Si on utilise le mode debounce, on évite les mises à jour trop fréquentes
     if (this.config.debounce_updates) {
       if (this.updateTimer) {
         clearTimeout(this.updateTimer);
       }
-      
+
       this.updateTimer = setTimeout(() => {
         this._updateGauge();
       }, this.config.update_interval);
@@ -105,6 +115,9 @@ class CustomGaugeCard extends HTMLElement {
     
     // Stocker l'état actuel pour la prochaine mise à jour
     this.previousState = state;
+
+    // Mettre à jour le bouton switch si présent
+    this._updateSwitchButton();
   }
 
   // Animation pour les changements de valeur
@@ -218,6 +231,7 @@ class CustomGaugeCard extends HTMLElement {
     const gaugeHTML = `
       <style>
         .gauge-card {
+          position: relative;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -324,16 +338,51 @@ class CustomGaugeCard extends HTMLElement {
           z-index: 2;
           text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
         }
-        .control-overlay {
+        .switch-button {
           position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
+          width: 40px;
+          height: 40px;
           border-radius: 50%;
-          z-index: 10;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           cursor: pointer;
-          background: transparent;
+          z-index: 15;
+          transition: all 0.3s ease;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+          font-size: 20px;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        .switch-button:hover {
+          transform: scale(1.1);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+        .switch-button:active {
+          transform: scale(0.95);
+        }
+        .switch-button.on {
+          background: linear-gradient(135deg, #4caf50, #2e7d32);
+          color: white;
+        }
+        .switch-button.off {
+          background: linear-gradient(135deg, #666, #333);
+          color: #aaa;
+        }
+        .switch-button.top-left {
+          top: 16px;
+          left: 16px;
+        }
+        .switch-button.top-right {
+          top: 16px;
+          right: 16px;
+        }
+        .switch-button.bottom-left {
+          bottom: 40px;
+          left: 16px;
+        }
+        .switch-button.bottom-right {
+          bottom: 40px;
+          right: 16px;
         }
       </style>
       <div class="gauge-card" id="gauge-container">
@@ -363,9 +412,8 @@ class CustomGaugeCard extends HTMLElement {
 
     // Initialiser toutes les LEDs à l'état inactif
     this._updateLeds(0, ledsCount);
-    
-    // Ajouter les fonctionnalités avancées
-    this._handleEntityControl();
+
+    // Ajouter les fonctionnalités avancées (sauf _createSwitchButton qui est dans le setter hass)
     this._setupAccessibility();
     this._showTrendIndicator();
     this._addMarkersAndZones();
@@ -432,101 +480,82 @@ class CustomGaugeCard extends HTMLElement {
     event.detail = { entityId: this.config.entity };
     this.dispatchEvent(event);
   }
-  
-  // Ajouter cette méthode pour le contrôle des entités
-  _handleEntityControl() {
-    if (!this._hass || !this.config.entity) return;
-    
-    // Vérifier si l'entité est contrôlable
-    const entityId = this.config.entity;
-    const stateObj = this._hass.states[entityId];
-    
+
+  // Créer et gérer le bouton switch
+  _createSwitchButton() {
+    if (!this.config.show_switch_button || !this.config.switch_entity || !this._hass) return;
+
+    const switchEntity = this.config.switch_entity;
+    const stateObj = this._hass.states[switchEntity];
+
+    if (!stateObj) {
+      console.warn(`Switch entity ${switchEntity} not found`);
+      return;
+    }
+
+    // Vérifier si le bouton existe déjà
+    let switchButton = this.shadowRoot.querySelector('.switch-button');
+
+    if (!switchButton) {
+      // Créer le bouton
+      switchButton = document.createElement('div');
+      switchButton.className = `switch-button ${this.config.switch_button_position}`;
+      switchButton.innerHTML = '⏻'; // Symbole power Unicode
+
+      // Ajouter le gestionnaire de clic
+      switchButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._toggleSwitch();
+      });
+
+      // Ajouter le bouton au conteneur
+      const gaugeContainer = this.shadowRoot.getElementById('gauge-container');
+      if (gaugeContainer) {
+        gaugeContainer.appendChild(switchButton);
+      }
+    }
+
+    // Mettre à jour l'état visuel du bouton
+    this._updateSwitchButton();
+  }
+
+  // Mettre à jour l'apparence du bouton switch selon l'état
+  _updateSwitchButton() {
+    if (!this.config.show_switch_button || !this.config.switch_entity || !this._hass) return;
+
+    const switchButton = this.shadowRoot.querySelector('.switch-button');
+    if (!switchButton) return;
+
+    const stateObj = this._hass.states[this.config.switch_entity];
     if (!stateObj) return;
-    
-    // Si l'entité est un input_number ou similaire
-    if (this.config.enable_control && 
-       (entityId.startsWith('input_number.') || 
-        entityId.startsWith('number.') ||
-        this.config.controlable_entity)) {
-        
-      // Ajouter un overlay pour le contrôle
-      const gauge = this.shadowRoot.querySelector('.gauge');
-      
-      // Créer un élément de contrôle circulaire
-      const controlOverlay = document.createElement('div');
-      controlOverlay.className = 'control-overlay';
-      
-      gauge.appendChild(controlOverlay);
-      
-      // Ajouter des gestionnaires d'événements pour le contrôle
-      controlOverlay.addEventListener('mousedown', this._startControl.bind(this));
-      controlOverlay.addEventListener('touchstart', this._startControl.bind(this), { passive: false });
-      document.addEventListener('mouseup', this._endControl.bind(this));
-      document.addEventListener('touchend', this._endControl.bind(this));
-      document.addEventListener('mousemove', this._moveControl.bind(this));
-      document.addEventListener('touchmove', this._moveControl.bind(this), { passive: false });
-    }
+
+    const isOn = stateObj.state === 'on';
+
+    // Mettre à jour les classes CSS
+    switchButton.classList.remove('on', 'off');
+    switchButton.classList.add(isOn ? 'on' : 'off');
+
+    // Ajouter un titre pour l'accessibilité
+    switchButton.title = `${stateObj.attributes.friendly_name || this.config.switch_entity}: ${isOn ? 'ON' : 'OFF'}`;
   }
 
-  _startControl(e) {
-    e.preventDefault();
-    this.isControlling = true;
-    this.baseX = e.clientX || (e.touches && e.touches[0].clientX);
-    this.baseY = e.clientY || (e.touches && e.touches[0].clientY);
-  }
+  // Toggle le switch
+  _toggleSwitch() {
+    if (!this.config.switch_entity || !this._hass) return;
 
-  _endControl() {
-    this.isControlling = false;
-  }
+    const stateObj = this._hass.states[this.config.switch_entity];
+    if (!stateObj) return;
 
-  _moveControl(e) {
-    if (!this.isControlling) return;
-    
-    e.preventDefault();
-    
-    const x = e.clientX || (e.touches && e.touches[0].clientX);
-    const y = e.clientY || (e.touches && e.touches[0].clientY);
-    
-    if (!x || !y) return;
-    
-    const gauge = this.shadowRoot.querySelector('.gauge');
-    const rect = gauge.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    // Calculer l'angle à partir du centre
-    const angleRad = Math.atan2(y - centerY, x - centerX);
-    let angleDeg = (angleRad * 180 / Math.PI) + 90; // +90 pour commencer à midi
-    if (angleDeg < 0) angleDeg += 360;
-    
-    // Convertir l'angle en pourcentage (0-100)
-    const percentage = angleDeg / 360 * 100;
-    
-    // Convertir le pourcentage en valeur selon min et max
-    const min = this.config.min || 0;
-    const max = this.config.max || 100;
-    let value = min + (percentage / 100) * (max - min);
-    
-    // Arrondir selon le nombre de décimales configuré
-    const decimals = this.config.decimals || 0;
-    value = parseFloat(value.toFixed(decimals));
-    
-    // Appeler le service pour mettre à jour l'entité
-    const entityToControl = this.config.controlable_entity || this.config.entity;
-    
-    // Déterminer le domaine du service
-    let domain = entityToControl.split('.')[0];
-    let service = 'set_value';
-    
-    if (domain === 'number') {
-      service = 'set_value';
-    } else if (domain === 'input_number') {
-      service = 'set_value';
-    }
-    
-    this._hass.callService(domain, service, {
-      entity_id: entityToControl,
-      value: value
+    const isOn = stateObj.state === 'on';
+    const service = isOn ? 'turn_off' : 'turn_on';
+
+    this._hass.callService('switch', service, {
+      entity_id: this.config.switch_entity
+    }).then(() => {
+      // Mettre à jour immédiatement l'apparence du bouton
+      setTimeout(() => this._updateSwitchButton(), 100);
+    }).catch(error => {
+      console.error('Error toggling switch:', error);
     });
   }
 

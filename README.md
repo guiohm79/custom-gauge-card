@@ -25,10 +25,10 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 - Percentage change with directional arrow
 - Automatic history from Home Assistant
 
-🎮 **Interactive Control**
-- Control your entities directly from the gauge
-- Intuitive circular drag-and-drop interface
-- Compatible with `input_number` and `number` entities
+🎮 **Switch Control**
+- Control switches directly from the gauge
+- Optional switch button with customizable position
+- Toggle on/off with visual feedback
 
 ⚡ **Optimized Performance**
 - Power save mode (pauses when invisible)
@@ -70,7 +70,7 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 ### Minimal Configuration
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.temperature
 name: Temperature
 unit: "°C"
@@ -81,7 +81,7 @@ max: 40
 ### Complete Configuration
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.water_tank_level_sensor_1
 name: Water Tank 1 Level
 unit: L
@@ -149,9 +149,10 @@ severity:
   - color: "#04fb1d"
     value: 100
 
-# Interactive control
-enable_control: true
-controlable_entity: input_number.tank_1_target_level
+# Switch button (optional)
+show_switch_button: true
+switch_entity: switch.pump_1
+switch_button_position: bottom-right  # Options: top-left, top-right, bottom-left, bottom-right
 
 # Optimizations
 power_save_mode: true
@@ -215,8 +216,9 @@ optimize_leds: true
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `show_trend` | boolean | false | Show 24h trend indicator |
-| `enable_control` | boolean | false | Enable interactive control |
-| `controlable_entity` | string | - | Entity to control (otherwise uses `entity`) |
+| `show_switch_button` | boolean | false | Show a switch control button |
+| `switch_entity` | string | - | Switch entity to control |
+| `switch_button_position` | string | `bottom-right` | Button position: `top-left`, `top-right`, `bottom-left`, `bottom-right` |
 
 ### Markers and Zones
 
@@ -241,7 +243,7 @@ optimize_leds: true
 ### Temperature Gauge
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.living_room_temperature
 name: Living Room Temperature
 unit: "°C"
@@ -261,7 +263,7 @@ severity:
 ### Battery Level
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.phone_battery
 name: Phone Battery
 unit: "%"
@@ -284,19 +286,21 @@ zones:
     opacity: 0.3
 ```
 
-### Controllable Power Consumption
+### Power Consumption with Switch Control
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.power_consumption
 name: Power Consumption
 unit: W
 min: 0
 max: 5000
-enable_control: true
-controlable_entity: input_number.power_limit
 smooth_transitions: true
 animation_duration: 600
+# Add a switch button to control a device
+show_switch_button: true
+switch_entity: switch.main_power
+switch_button_position: bottom-right
 markers:
   - value: 2000
     color: "#ffeb3b"
@@ -306,7 +310,7 @@ markers:
 ### Water Tank Level with Multiple Zones
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.water_tank_level
 name: Water Tank
 unit: L
@@ -345,7 +349,7 @@ zones:
 ### Humidity with Custom Theme
 
 ```yaml
-type: custom:custom-gauge-card2
+type: custom:custom-gauge-card
 entity: sensor.bathroom_humidity
 name: Bathroom Humidity
 unit: "%"
@@ -367,10 +371,6 @@ animation_duration: 1000
 - All modern browsers supporting Web Components
 - Mobile and tablet compatible
 
-## Known Issues
-
-- Trend indicator requires available history (active recorder)
-- Interactive control only works with `input_number` and `number` entities
 
 ## Contributing
 
