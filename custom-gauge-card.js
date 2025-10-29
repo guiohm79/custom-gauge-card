@@ -1,3 +1,7 @@
+// Custom Gauge Card v1.0.4
+const CARD_VERSION = '1.0.4';
+console.info(`%c CUSTOM-GAUGE-CARD \n%c Version ${CARD_VERSION} `, 'color: orange; font-weight: bold; background: black', 'color: white; font-weight: bold; background: dimgray');
+
 class CustomGaugeCard extends HTMLElement {
   setConfig(config) {
     if (!config.entity) {
