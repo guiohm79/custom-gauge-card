@@ -6,7 +6,11 @@
 
 A custom card for Home Assistant that displays your sensors as an animated and interactive circular LED gauge.
 
-![Custom Gauge Card](icon.svg)
+
+
+
+<img width="589" alt="image" src="https://github.com/guiohm79/custom-gauge-card/blob/main/captures/Exemple1.png">
+<img width="589" alt="image" src="https://github.com/guiohm79/custom-gauge-card/blob/main//captures/Exemple2.png">
 
 ## Features
 
