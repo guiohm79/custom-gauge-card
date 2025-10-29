@@ -114,8 +114,8 @@ class CustomGaugeCard extends HTMLElement {
     } else {
       // Mise à jour directe sans animation
       const normalizedValue = ((state - min) / (max - min)) * 100;
-      const ledsCount = this.config.leds_count || 100;
-      
+      const ledsCount = this.ledsCount || this.config.leds_count || 100;
+
       this._updateLeds(normalizedValue, ledsCount);
       this._updateCenterShadow(normalizedValue);
       
@@ -134,7 +134,7 @@ class CustomGaugeCard extends HTMLElement {
 
   // Animation pour les changements de valeur
   _animateValueChange(fromValue, toValue, min, max) {
-    const ledsCount = this.config.leds_count || 100;
+    const ledsCount = this.ledsCount || this.config.leds_count || 100;
     const duration = this.config.animation_duration || 800; // 800ms par défaut
     const steps = 20; // Nombre d'étapes pour l'animation
     const stepDuration = duration / steps;
@@ -184,21 +184,13 @@ class CustomGaugeCard extends HTMLElement {
 
   // Optimiser le rendu des LEDs pour les appareils à faible puissance
   _optimizeLEDs() {
-    if (this.config.optimize_leds) {
-      // Réduire le nombre de LEDs pour les appareils mobiles ou à faible puissance
-      const isMobile = window.matchMedia("(max-width: 768px)").matches;
-      
-      if (isMobile) {
-        // Réduire le nombre de LEDs sur mobile
-        return Math.min(this.config.leds_count || 100, 60); // Limiter à 60 LEDs max sur mobile
-      }
-    }
-    
+    // Retourne toujours le nombre de LEDs configuré, sans distinction mobile/desktop
     return this.config.leds_count || 100;
   }
 
   render() {
-    const ledsCount = this._optimizeLEDs();
+    this.ledsCount = this._optimizeLEDs();
+    const ledsCount = this.ledsCount;
     const cardTheme = this.config.theme || 'default';
     
     // Définition des thèmes
@@ -364,7 +356,10 @@ class CustomGaugeCard extends HTMLElement {
           z-index: 15;
           transition: all 0.3s ease;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-          font-size: 20px;
+          font-size: 22px;
+          font-family: system-ui, -apple-system, "Segoe UI", "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+          line-height: 1;
+          font-weight: normal;
           border: 2px solid rgba(255, 255, 255, 0.2);
         }
         .switch-button:hover {
@@ -504,11 +499,11 @@ class CustomGaugeCard extends HTMLElement {
   // Obtenir l'icône par défaut selon le type d'entité
   _getDefaultIcon(entityType) {
     const icons = {
-      'switch': '⏻',
+      'switch': '●',
       'light': '💡',
       'scene': '🎬',
       'script': '▶',
-      'input_boolean': '⏻',
+      'input_boolean': '●',
       'automation': '🤖',
       'fan': '🌀',
       'cover': '🪟',
@@ -516,7 +511,7 @@ class CustomGaugeCard extends HTMLElement {
       'lock': '🔒',
       'vacuum': '🤖'
     };
-    return icons[entityType] || '⏻'; // Icône par défaut si type inconnu
+    return icons[entityType] || '●'; // Icône par défaut si type inconnu
   }
 
   // Obtenir l'état d'une entité (on/off, etc.)
