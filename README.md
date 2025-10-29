@@ -34,9 +34,9 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 
 ⚡ **Optimized Performance**
 - Power save mode (pauses when invisible)
-- Automatic LED reduction on mobile
 - Update debouncing
 - Optimized animations
+- Consistent rendering across all devices
 
 ♿ **Accessible**
 - ARIA attributes for screen readers
@@ -98,7 +98,7 @@ leds_count: 150
 decimals: 0
 
 # Theme
-theme: dark  # default, light, dark, custom
+theme: custom  # default, light, dark, custom
 custom_background: "#2c2c2c"
 custom_gauge_background: "radial-gradient(circle, #444, #222)"
 custom_center_background: "radial-gradient(circle, #333, #111)"
@@ -161,7 +161,7 @@ severity:
 buttons:
   - entity: switch.pump_1
     position: bottom-right
-    icon: "⏻"  # Optional, defaults to entity type icon
+    icon: "●"  # Optional, defaults to entity type icon
   - entity: light.tank_led
     position: top-right
   - entity: script.fill_tank
@@ -173,7 +173,7 @@ power_save_mode: true
 power_save_threshold: 20
 update_interval: 1000
 debounce_updates: true
-optimize_leds: true
+
 ```
 
 ## Configuration Options
@@ -277,15 +277,15 @@ Configure multiple buttons to control various entities:
 buttons:
   - entity: switch.my_switch
     position: bottom-right  # top-left, top-right, bottom-left, bottom-right
-    icon: "⏻"  # Optional, defaults to entity type
+    icon: "●"  # Optional, defaults to entity type
 ```
 
 **Supported Entity Types:**
-- `switch` - Toggle switch on/off (⏻)
+- `switch` - Toggle switch on/off (●)
 - `light` - Toggle light on/off (💡)
 - `scene` - Activate scene (🎬)
 - `script` - Execute script (▶)
-- `input_boolean` - Toggle boolean (⏻)
+- `input_boolean` - Toggle boolean (●)
 - `automation` - Toggle automation (🤖)
 - `fan` - Toggle fan (🌀)
 - `cover` - Open/close cover (🪟)
@@ -311,7 +311,7 @@ buttons:
 | `power_save_threshold` | number | 10 | Visibility threshold (%) |
 | `update_interval` | number | 1000 | Update interval in ms |
 | `debounce_updates` | boolean | false | Limit update frequency |
-| `optimize_leds` | boolean | false | Reduce LEDs on mobile |
+
 
 ## Usage Examples
 

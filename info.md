@@ -40,8 +40,8 @@ A modern, animated circular LED gauge card for Home Assistant.
 - 🎨 **Animated LED Gauge** - Beautiful circular gauge with smooth animations
 - 🎯 **Zones & Markers** - Visual indicators for value ranges
 - 📊 **Trend Indicator** - 24-hour history at a glance
-- 🎮 **Interactive Control** - Control entities directly from the gauge
-- ⚡ **Performance Optimized** - Power save mode and mobile optimization
+- 🎮 **Multi-Button Control** - Control multiple entities with customizable buttons
+- ⚡ **Performance Optimized** - Power save mode and consistent rendering
 - 🎨 **Customizable Themes** - Light, dark, and custom themes
 
 ### 📋 Requirements
@@ -75,6 +75,12 @@ smooth_transitions: true
 enable_shadow: true
 center_shadow: true
 show_trend: true
+# Multi-button control
+buttons:
+  - entity: light.living_room
+    position: top-right
+  - entity: switch.ac_unit
+    position: bottom-right
 severity:
   - color: "#00bfff"
     value: 30

@@ -25,16 +25,17 @@ Une carte personnalisée pour Home Assistant qui affiche vos capteurs sous forme
 - Pourcentage de changement avec flèche directionnelle
 - Historique automatique depuis Home Assistant
 
-🎮 **Contrôle Interactif**
-- Contrôlez vos entités directement depuis la jauge
-- Interface circulaire intuitive par glisser-déposer
-- Compatible avec `input_number` et entités `number`
+🎮 **Contrôle Multi-Boutons**
+- Contrôlez plusieurs entités directement depuis la jauge
+- Support des interrupteurs, lumières, scènes, scripts, automatisations et plus
+- Jusqu'à 4 boutons avec positions personnalisables
+- Icônes intelligentes et retour visuel d'état
 
 ⚡ **Performances Optimisées**
 - Mode économie d'énergie (pause quand invisible)
-- Réduction automatique des LEDs sur mobile
 - Débouncing des mises à jour
 - Animations optimisées
+- Rendu cohérent sur tous les appareils
 
 ♿ **Accessible**
 - Attributs ARIA pour lecteurs d'écran
@@ -96,7 +97,7 @@ leds_count: 150
 decimals: 0
 
 # Thème
-theme: dark  # default, light, dark, custom
+theme: custom  # default, light, dark, custom
 custom_background: "#2c2c2c"
 custom_gauge_background: "radial-gradient(circle, #444, #222)"
 custom_center_background: "radial-gradient(circle, #333, #111)"
@@ -155,9 +156,16 @@ severity:
   - color: "#04fb1d"
     value: 100
 
-# Contrôle interactif
-enable_control: true
-controlable_entity: input_number.cuve_1_niveau_cible
+# Contrôle multi-boutons (optionnel)
+buttons:
+  - entity: switch.pompe_1
+    position: bottom-right
+    icon: "●"  # Optionnel, défaut selon le type d'entité
+  - entity: light.led_cuve
+    position: top-right
+  - entity: script.remplir_cuve
+    position: bottom-left
+    icon: "▶"
 
 # Optimisations
 power_save_mode: true
@@ -258,8 +266,33 @@ title_font_color: "#00ff00"
 | Option | Type | Défaut | Description |
 |--------|------|--------|-------------|
 | `show_trend` | boolean | false | Afficher l'indicateur de tendance 24h |
-| `enable_control` | boolean | false | Activer le contrôle interactif |
-| `controlable_entity` | string | - | Entité à contrôler (sinon utilise `entity`) |
+| `buttons` | list | `[]` | Liste de configurations de boutons (voir Contrôle Multi-Boutons ci-dessous) |
+
+### Contrôle Multi-Boutons
+
+Configurez plusieurs boutons pour contrôler diverses entités:
+
+```yaml
+buttons:
+  - entity: switch.mon_interrupteur
+    position: bottom-right  # top-left, top-right, bottom-left, bottom-right
+    icon: "●"  # Optionnel, défaut selon le type d'entité
+```
+
+**Types d'Entités Supportés:**
+- `switch` - Basculer on/off (●)
+- `light` - Basculer lumière on/off (💡)
+- `scene` - Activer scène (🎬)
+- `script` - Exécuter script (▶)
+- `input_boolean` - Basculer booléen (●)
+- `automation` - Basculer automatisation (🤖)
+- `fan` - Basculer ventilateur (🌀)
+- `cover` - Ouvrir/fermer couverture (🪟)
+- `climate` - Basculer climatisation (🌡️)
+- `lock` - Verrouiller/déverrouiller (🔒)
+- `vacuum` - Démarrer/arrêter aspirateur (🤖)
+
+**Note:** L'ancien format de configuration (`show_switch_button`, `switch_entity`, `switch_button_position`) est toujours supporté pour la rétrocompatibilité.
 
 ### Marqueurs et Zones
 
@@ -277,7 +310,7 @@ title_font_color: "#00ff00"
 | `power_save_threshold` | number | 10 | Seuil de visibilité (%) |
 | `update_interval` | number | 1000 | Intervalle de mise à jour en ms |
 | `debounce_updates` | boolean | false | Limiter la fréquence des mises à jour |
-| `optimize_leds` | boolean | false | Réduire LEDs sur mobile |
+
 
 ## Exemples d'Usage
 
@@ -310,7 +343,7 @@ name: Batterie Téléphone
 unit: "%"
 min: 0
 max: 100
-leds_count: 50
+leds_count: 100
 show_trend: true
 zones:
   - from: 0
@@ -327,7 +360,7 @@ zones:
     opacity: 0.3
 ```
 
-### Consommation Électrique Contrôlable
+### Consommation Électrique avec Contrôle Multi-Boutons
 
 ```yaml
 type: custom:custom-gauge-card
@@ -336,14 +369,53 @@ name: Consommation
 unit: W
 min: 0
 max: 5000
-enable_control: true
-controlable_entity: input_number.power_limit
 smooth_transitions: true
 animation_duration: 600
+# Ajout de boutons de contrôle multiples
+buttons:
+  - entity: switch.alimentation_principale
+    position: bottom-right
+  - entity: light.indicateur_puissance
+    position: top-right
+  - entity: script.reset_compteur
+    position: bottom-left
+    icon: "🔄"
 markers:
   - value: 2000
     color: "#ffeb3b"
     label: Limite
+```
+
+### Hub de Contrôle Maison Intelligente
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.temperature_salon
+name: Salon
+unit: "°C"
+min: 15
+max: 30
+# Contrôler plusieurs appareils depuis une jauge
+buttons:
+  - entity: light.salon
+    position: top-left
+    icon: "💡"
+  - entity: switch.climatisation
+    position: top-right
+    icon: "❄️"
+  - entity: scene.mode_cinema
+    position: bottom-left
+    icon: "🎬"
+  - entity: automation.routine_nuit
+    position: bottom-right
+    icon: "🌙"
+severity:
+  - color: "#00bfff"
+    value: 40
+  - color: "#4caf50"
+    value: 70
+  - color: "#ff9800"
+    value: 100
 ```
 
 ## Compatibilité
