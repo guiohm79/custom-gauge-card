@@ -157,15 +157,18 @@ severity:
     value: 100
 
 # Contrôle multi-boutons (optionnel)
+button_icon_size: 22  # Taille par défaut de l'icône pour tous les boutons (en pixels)
 buttons:
   - entity: switch.pompe_1
     position: bottom-right
     icon: "●"  # Optionnel, défaut selon le type d'entité
+    icon_size: 28  # Optionnel : taille personnalisée pour ce bouton
   - entity: light.led_cuve
     position: top-right
   - entity: script.remplir_cuve
     position: bottom-left
     icon: "▶"
+    icon_size: 20  # Optionnel : taille personnalisée pour ce bouton
 
 # Optimisations
 power_save_mode: true
@@ -272,12 +275,32 @@ title_font_color: "#00ff00"
 
 Configurez plusieurs boutons pour contrôler diverses entités:
 
+| Option | Type | Défaut | Description |
+|--------|------|--------|-------------|
+| `button_icon_size` | number | 22 | Taille par défaut de l'icône pour tous les boutons (en pixels) |
+
+**Propriétés des Boutons:**
+
 ```yaml
+button_icon_size: 22  # Taille globale par défaut pour tous les boutons
 buttons:
   - entity: switch.mon_interrupteur
     position: bottom-right  # top-left, top-right, bottom-left, bottom-right
     icon: "●"  # Optionnel, défaut selon le type d'entité
+    icon_size: 28  # Optionnel : taille personnalisée pour ce bouton (remplace button_icon_size)
 ```
+
+| Propriété du Bouton | Type | Défaut | Description |
+|----------------------|------|--------|-------------|
+| `entity` | string | *requis* | ID de l'entité à contrôler |
+| `position` | string | `bottom-right` | Position du bouton (top-left, top-right, bottom-left, bottom-right) |
+| `icon` | string | *auto* | Icône/emoji personnalisé (par défaut selon le type d'entité) |
+| `icon_size` | number | `button_icon_size` | Taille personnalisée de l'icône pour ce bouton |
+
+**Personnalisation des icônes :**
+- Vous pouvez utiliser **n'importe quel emoji** (💡, 🎬, ●, 🔥, ⚡, 🌙, ⭐, 🎵, 🌡️, 💧, etc.)
+- Vous pouvez utiliser **n'importe quel texte ou symbole** (●, ▶, ■, ★, ON, OFF, etc.)
+
 
 **Types d'Entités Supportés:**
 - `switch` - Basculer on/off (●)

@@ -158,15 +158,18 @@ severity:
     value: 100
 
 # Multi-button control (optional)
+button_icon_size: 22  # Default icon size for all buttons (in pixels)
 buttons:
   - entity: switch.pump_1
     position: bottom-right
     icon: "●"  # Optional, defaults to entity type icon
+    icon_size: 28  # Optional: custom size for this button
   - entity: light.tank_led
     position: top-right
   - entity: script.fill_tank
     position: bottom-left
     icon: "▶"
+    icon_size: 20  # Optional: custom size for this button
 
 # Optimizations
 power_save_mode: true
@@ -273,12 +276,31 @@ title_font_color: "#00ff00"
 
 Configure multiple buttons to control various entities:
 
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `button_icon_size` | number | 22 | Default icon size for all buttons (in pixels) |
+
+**Button Properties:**
+
 ```yaml
+button_icon_size: 22  # Global default size for all buttons
 buttons:
   - entity: switch.my_switch
     position: bottom-right  # top-left, top-right, bottom-left, bottom-right
     icon: "●"  # Optional, defaults to entity type
+    icon_size: 28  # Optional: custom size for this button (overrides button_icon_size)
 ```
+
+| Button Property | Type | Default | Description |
+|-----------------|------|---------|-------------|
+| `entity` | string | *required* | Entity ID to control |
+| `position` | string | `bottom-right` | Button position (top-left, top-right, bottom-left, bottom-right) |
+| `icon` | string | *auto* | Custom icon/emoji (defaults to entity type icon) |
+| `icon_size` | number | `button_icon_size` | Custom icon size for this button |
+
+**Icon Customization:**
+- You can use **any emoji** (💡, 🎬, ●, 🔥, ⚡, 🌙, ⭐, 🎵, 🌡️, 💧, etc.)
+- You can use **any text or symbol** (●, ▶, ■, ★, ON, OFF, etc.)
 
 **Supported Entity Types:**
 - `switch` - Toggle switch on/off (●)

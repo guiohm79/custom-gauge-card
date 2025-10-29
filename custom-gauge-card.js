@@ -19,7 +19,9 @@ class CustomGaugeCard extends HTMLElement {
       title_font_family: config.title_font_family || 'inherit',
       title_font_size: config.title_font_size || '16px',
       title_font_weight: config.title_font_weight || 'normal',
-      title_font_color: config.title_font_color || null // null = utiliser la couleur du thème
+      title_font_color: config.title_font_color || null, // null = utiliser la couleur du thème
+      // Configuration de la taille de l'icône du bouton
+      button_icon_size: config.button_icon_size || 22 // Taille de l'icône dans le bouton
     };
 
     // Rétrocompatibilité : convertir l'ancienne config switch en format buttons
@@ -346,8 +348,8 @@ class CustomGaugeCard extends HTMLElement {
         }
         .switch-button {
           position: absolute;
-          width: 40px;
-          height: 40px;
+          width: 0px;
+          height: 0px;
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -356,7 +358,7 @@ class CustomGaugeCard extends HTMLElement {
           z-index: 15;
           transition: all 0.3s ease;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-          font-size: 22px;
+          font-size: var(--icon-size, ${this.config.button_icon_size}px);
           font-family: system-ui, -apple-system, "Segoe UI", "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
           line-height: 1;
           font-weight: normal;
@@ -378,20 +380,20 @@ class CustomGaugeCard extends HTMLElement {
           color: #aaa;
         }
         .switch-button.top-left {
-          top: 16px;
-          left: 16px;
+          top: 30px;
+          left: 30px;
         }
         .switch-button.top-right {
-          top: 16px;
-          right: 16px;
+          top: 30px;
+          right: 30px;
         }
         .switch-button.bottom-left {
           bottom: 40px;
-          left: 16px;
+          left: 30px;
         }
         .switch-button.bottom-right {
           bottom: 40px;
-          right: 16px;
+          right: 30px;
         }
       </style>
       <div class="gauge-card" id="gauge-container">
@@ -549,6 +551,9 @@ class CustomGaugeCard extends HTMLElement {
         const icon = buttonConfig.icon || this._getDefaultIcon(entityType);
         const position = buttonConfig.position || 'bottom-right';
 
+        // Déterminer la taille de l'icône (individuelle ou globale)
+        const iconSize = buttonConfig.icon_size || this.config.button_icon_size;
+
         // Créer le bouton
         button = document.createElement('div');
         button.id = buttonId;
@@ -556,6 +561,11 @@ class CustomGaugeCard extends HTMLElement {
         button.innerHTML = icon;
         button.dataset.entity = entityId;
         button.dataset.index = index;
+
+        // Appliquer la taille personnalisée de l'icône
+        if (buttonConfig.icon_size) {
+          button.style.setProperty('--icon-size', `${iconSize}px`);
+        }
 
         // Ajouter le gestionnaire de clic
         button.addEventListener('click', (e) => {
