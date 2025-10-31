@@ -528,10 +528,6 @@ If you like this card, please:
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Credits
-
-Developed with ❤️ for the Home Assistant community.
-
 ---
 
 
