@@ -359,7 +359,7 @@ class CustomGaugeCard extends HTMLElement {
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          z-index: 15;
+          z-index: 3;
           transition: all 0.3s ease;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
           font-size: var(--icon-size, ${this.config.button_icon_size}px);
