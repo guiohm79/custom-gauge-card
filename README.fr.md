@@ -6,7 +6,8 @@
 
 Une carte personnalisée pour Home Assistant qui affiche vos capteurs sous forme de jauge circulaire LED animée et interactive.
 
-![Custom Gauge Card](icon.svg)
+<img width="589" alt="image" src="https://github.com/guiohm79/custom-gauge-card/blob/main/captures/Exemple1.png">
+<img width="589" alt="image" src="https://github.com/guiohm79/custom-gauge-card/blob/main//captures/Exemple2.png">
 
 ## Captures d'écran
 
