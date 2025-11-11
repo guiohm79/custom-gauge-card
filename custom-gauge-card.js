@@ -377,11 +377,17 @@ class CustomGaugeCard extends HTMLElement {
         }
         .switch-button.on {
           background: linear-gradient(135deg, #4caf50, #2e7d32);
-          color: white;
+          color: #fff;
+          opacity: 1.0;
+          text-shadow: 0 0 10px rgba(76, 175, 80, 1), 0 0 20px rgba(76, 175, 80, 0.6);
+          filter: brightness(1.2);
         }
         .switch-button.off {
           background: linear-gradient(135deg, #666, #333);
-          color: #aaa;
+          color: #333;
+          opacity: 0.4;
+          text-shadow: none;
+          filter: grayscale(0.5);
         }
         .switch-button.top-left {
           top: 30px;
