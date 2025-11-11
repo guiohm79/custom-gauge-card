@@ -56,6 +56,8 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 
 ### Via HACS (Recommended)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=guiohm79&repository=custom-gauge-card&category=plugin)
+
 1. Open HACS in Home Assistant
 2. Go to "Frontend"
 3. Click on the menu (⋮) in the top right
