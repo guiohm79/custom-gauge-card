@@ -52,6 +52,12 @@ power_save_threshold: 20
 update_interval: 1000
 debounce_updates: true
 optimize_leds: true
+# Options de transparence des backgrounds
+# transparent_card_background: true   # Rend la carte principale transparente
+# transparent_gauge_background: true  # Rend le cercle gauge transparent
+# transparent_center_background: true # Rend le cercle central transparent
+# hide_shadows: true                  # Masque tous les box-shadows
+# hide_inactive_leds: true            # Masque les LEDs inactives (grises)
 # Configuration des boutons (nouveau système multi-boutons)
 buttons:
   - entity: switch.refoulement_cuve_1

@@ -7,47 +7,44 @@
 A custom card for Home Assistant that displays your sensors as an animated and interactive circular LED gauge.
 
 
-
-
-<img width="589" alt="image" src="https://github.com/guiohm79/custom-gauge-card/blob/main/captures/Exemple1.png">
-<img width="589" alt="image" src="https://github.com/guiohm79/custom-gauge-card/blob/main//captures/Exemple2.png">
-
 ## Screenshots
 
 ![Example 1](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple1.png)
 ![Example 2](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple2.png)
+![Example 3](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple3.png)
+![Exemple 4](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple4.png)
 
 ## Features
 
-✨ **Modern Animated Design**
+ **Modern Animated Design**
 - Circular gauge with animated LEDs
 - Smooth and fluid value transitions
 - Dynamic shadow and lighting effects
 - Customizable themes (light, dark, custom)
 
-🎯 **Zones and Markers**
+ **Zones and Markers**
 - Define colored zones to visualize value ranges
 - Add markers with labels for specific reference points
 - Flexible color and opacity configuration
 
-📊 **Trend Indicator**
+ **Trend Indicator**
 - Display 24-hour evolution
 - Percentage change with directional arrow
 - Automatic history from Home Assistant
 
-🎮 **Multi-Button Control**
+ **Multi-Button Control**
 - Control multiple entities directly from the gauge
 - Support for switches, lights, scenes, scripts, automations and more
 - Up to 4 buttons with customizable positions
 - Smart icons and visual feedback
 
-⚡ **Optimized Performance**
+ **Optimized Performance**
 - Power save mode (pauses when invisible)
 - Update debouncing
 - Optimized animations
 - Consistent rendering across all devices
 
-♿ **Accessible**
+ **Accessible**
 - ARIA attributes for screen readers
 - Keyboard navigation support
 - Slider role for interactive controls
@@ -275,6 +272,27 @@ title_font_color: "#00ff00"
 | `center_shadow` | boolean | false | Enable center shadow |
 | `center_shadow_blur` | number | 30 | Center shadow blur |
 | `center_shadow_spread` | number | 15 | Center shadow spread |
+
+### Background Transparency
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `transparent_card_background` | boolean | false | Make the main card background transparent |
+| `transparent_gauge_background` | boolean | false | Make the gauge circle background transparent |
+| `transparent_center_background` | boolean | false | Make the center circle background transparent |
+| `hide_shadows` | boolean | false | Hide all box-shadows |
+| `hide_inactive_leds` | boolean | false | Hide inactive (gray) LEDs, showing only active LEDs |
+
+**Example:**
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.battery
+transparent_card_background: true
+transparent_gauge_background: true
+transparent_center_background: true
+hide_shadows: true
+hide_inactive_leds: true
+```
 
 ### Advanced Features
 

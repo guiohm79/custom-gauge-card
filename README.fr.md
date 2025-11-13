@@ -6,45 +6,44 @@
 
 Une carte personnalisée pour Home Assistant qui affiche vos capteurs sous forme de jauge circulaire LED animée et interactive.
 
-<img width="589" alt="image" src="https://github.com/guiohm79/custom-gauge-card/blob/main/captures/Exemple1.png">
-<img width="589" alt="image" src="https://github.com/guiohm79/custom-gauge-card/blob/main//captures/Exemple2.png">
-
 ## Captures d'écran
 
 ![Exemple 1](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple1.png)
 ![Exemple 2](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple2.png)
+![Exemple 3](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple3.png)
+![Exemple 4](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple4.png)
 
 ## Fonctionnalités
 
-✨ **Design Moderne et Animé**
+ **Design Moderne et Animé**
 - Jauge circulaire avec LEDs animées
 - Transitions fluides et douces entre les valeurs
 - Effets d'ombre et de lumière dynamiques
 - Thèmes personnalisables (clair, sombre, personnalisé)
 
-🎯 **Zones et Marqueurs**
+ **Zones et Marqueurs**
 - Définissez des zones colorées pour visualiser des plages de valeurs
 - Ajoutez des marqueurs avec étiquettes pour des repères spécifiques
 - Configuration flexible des couleurs et opacités
 
-📊 **Indicateur de Tendance**
+ **Indicateur de Tendance**
 - Affichage de l'évolution sur 24 heures
 - Pourcentage de changement avec flèche directionnelle
 - Historique automatique depuis Home Assistant
 
-🎮 **Contrôle Multi-Boutons**
+ **Contrôle Multi-Boutons**
 - Contrôlez plusieurs entités directement depuis la jauge
 - Support des interrupteurs, lumières, scènes, scripts, automatisations et plus
 - Jusqu'à 4 boutons avec positions personnalisables
 - Icônes intelligentes et retour visuel d'état
 
-⚡ **Performances Optimisées**
+ **Performances Optimisées**
 - Mode économie d'énergie (pause quand invisible)
 - Débouncing des mises à jour
 - Animations optimisées
 - Rendu cohérent sur tous les appareils
 
-♿ **Accessible**
+ **Accessible**
 - Attributs ARIA pour lecteurs d'écran
 - Navigation au clavier supportée
 - Rôle slider pour contrôles interactifs
@@ -271,6 +270,27 @@ title_font_color: "#00ff00"
 | `center_shadow_blur` | number | 30 | Flou de l'ombre centrale |
 | `center_shadow_spread` | number | 15 | Expansion de l'ombre centrale |
 
+### Transparence des Arrière-plans
+
+| Option | Type | Défaut | Description |
+|--------|------|--------|-------------|
+| `transparent_card_background` | boolean | false | Rendre l'arrière-plan de la carte principale transparent |
+| `transparent_gauge_background` | boolean | false | Rendre l'arrière-plan du cercle gauge transparent |
+| `transparent_center_background` | boolean | false | Rendre l'arrière-plan du cercle central transparent |
+| `hide_shadows` | boolean | false | Masquer toutes les ombres portées (box-shadows) |
+| `hide_inactive_leds` | boolean | false | Masquer les LEDs inactives (grises), ne montrant que les LEDs actives |
+
+**Exemple :**
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.batterie
+transparent_card_background: true
+transparent_gauge_background: true
+transparent_center_background: true
+hide_shadows: true
+hide_inactive_leds: true
+```
+
 ### Fonctionnalités Avancées
 
 | Option | Type | Défaut | Description |
@@ -465,17 +485,15 @@ Les contributions sont les bienvenues ! N'hésitez pas à :
 ## Support
 
 Si vous appréciez cette carte, n'hésitez pas à :
-- ⭐ Mettre une étoile sur GitHub
-- 🐛 Signaler les bugs
-- 💡 Proposer de nouvelles fonctionnalités
+-  Mettre une étoile sur GitHub
+-  Signaler les bugs
+-  Proposer de nouvelles fonctionnalités
 
 ## Licence
 
 Ce projet est sous licence MIT - voir le fichier LICENSE pour plus de détails.
 
-## Remerciements
 
-Développé avec ❤️ pour la communauté Home Assistant.
 
 ---
 

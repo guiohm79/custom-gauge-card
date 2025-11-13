@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(git tag:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(node -c:*)"
     ],
     "deny": [],
     "ask": []

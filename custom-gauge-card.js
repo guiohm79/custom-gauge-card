@@ -25,7 +25,13 @@ class CustomGaugeCard extends HTMLElement {
       title_font_weight: config.title_font_weight || 'normal',
       title_font_color: config.title_font_color || null, // null = utiliser la couleur du thème
       // Configuration de la taille de l'icône du bouton
-      button_icon_size: config.button_icon_size || 22 // Taille de l'icône dans le bouton
+      button_icon_size: config.button_icon_size || 22, // Taille de l'icône dans le bouton
+      // Options de transparence pour les backgrounds
+      transparent_card_background: config.transparent_card_background || false, // Rendre la carte principale transparente
+      transparent_gauge_background: config.transparent_gauge_background || false, // Rendre le cercle gauge transparent
+      transparent_center_background: config.transparent_center_background || false, // Rendre le cercle central transparent
+      hide_shadows: config.hide_shadows || false, // Masquer les box-shadows
+      hide_inactive_leds: config.hide_inactive_leds || false // Masquer les LEDs inactives (grises)
     };
 
     // Rétrocompatibilité : convertir l'ancienne config switch en format buttons
@@ -233,6 +239,17 @@ class CustomGaugeCard extends HTMLElement {
     
     // Utiliser le thème sélectionné
     const currentTheme = themes[cardTheme] || themes.default;
+
+    // Appliquer les options de transparence
+    if (this.config.transparent_card_background) {
+      currentTheme.background = 'transparent';
+    }
+    if (this.config.transparent_gauge_background) {
+      currentTheme.gaugeBackground = 'transparent';
+    }
+    if (this.config.transparent_center_background) {
+      currentTheme.centerBackground = 'transparent';
+    }
     
     const ledSize = this.config.led_size || 8; // Taille des LEDs configurable
     const centerSize = this.config.center_size || 120; // Taille du centre configurable
@@ -250,7 +267,7 @@ class CustomGaugeCard extends HTMLElement {
           background: ${currentTheme.background};
           border-radius: 15px;
           padding: 16px;
-          box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+          box-shadow: ${this.config.hide_shadows ? 'none' : '0 0 15px rgba(0, 0, 0, 0.5)'};
           cursor: pointer;
           transition: box-shadow 0.3s ease-in-out;
         }
@@ -279,7 +296,7 @@ class CustomGaugeCard extends HTMLElement {
           height: ${ledSize}px;
           background: #333;
           border-radius: 50%;
-          box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+          box-shadow: ${this.config.hide_shadows ? 'none' : '0 0 4px rgba(0, 0, 0, 0.8)'};
           transition: background 0.2s ease, box-shadow 0.2s ease;
         }
         .led.active {
@@ -361,7 +378,7 @@ class CustomGaugeCard extends HTMLElement {
           cursor: pointer;
           z-index: 3;
           transition: all 0.3s ease;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+          box-shadow: ${this.config.hide_shadows ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.3)'};
           font-size: var(--icon-size, ${this.config.button_icon_size}px);
           font-family: system-ui, -apple-system, "Segoe UI", "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
           line-height: 1;
@@ -370,7 +387,7 @@ class CustomGaugeCard extends HTMLElement {
         }
         .switch-button:hover {
           transform: scale(1.1);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+          box-shadow: ${this.config.hide_shadows ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.5)'};
         }
         .switch-button:active {
           transform: scale(0.95);
@@ -454,12 +471,18 @@ class CustomGaugeCard extends HTMLElement {
       if (!led) continue; // Ignorer si LED introuvable
       
       if (i < activeLeds) {
+        led.style.display = "";
         led.style.background = `radial-gradient(circle, rgba(255, 255, 255, 0.8), ${color})`;
         led.style.boxShadow = `0 0 8px ${color}`;
         led.classList.add("active");
       } else {
-        led.style.background = "#333";
-        led.style.boxShadow = "none";
+        if (this.config.hide_inactive_leds) {
+          led.style.display = "none";
+        } else {
+          led.style.display = "";
+          led.style.background = "#333";
+          led.style.boxShadow = "none";
+        }
         led.classList.remove("active");
       }
     }
