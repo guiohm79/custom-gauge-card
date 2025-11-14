@@ -24,6 +24,15 @@ class CustomGaugeCard extends HTMLElement {
       title_font_size: config.title_font_size || '16px',
       title_font_weight: config.title_font_weight || 'normal',
       title_font_color: config.title_font_color || null, // null = utiliser la couleur du thème
+      // Configuration de la police de la valeur centrale
+      value_font_family: config.value_font_family || 'inherit',
+      value_font_size: config.value_font_size || '32px',
+      value_font_weight: config.value_font_weight || 'bold',
+      value_font_color: config.value_font_color || null, // null = utiliser la couleur du thème
+      // Configuration de la police de l'unité
+      unit_font_size: config.unit_font_size || '16px',
+      unit_font_weight: config.unit_font_weight || 'normal',
+      unit_font_color: config.unit_font_color || null, // null = utiliser la couleur secondaire du thème
       // Configuration de la taille de l'icône du bouton
       button_icon_size: config.button_icon_size || 22, // Taille de l'icône dans le bouton
       // Options de transparence pour les backgrounds
@@ -314,16 +323,19 @@ class CustomGaugeCard extends HTMLElement {
           justify-content: center;
           color: ${currentTheme.textColor};
           text-align: center;
-          font-weight: bold;
           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
         }
         .value {
-          font-size: 32px;
+          font-size: ${this.config.value_font_size};
+          font-family: ${this.config.value_font_family};
+          font-weight: ${this.config.value_font_weight};
+          color: ${this.config.value_font_color || currentTheme.textColor};
           transition: all 0.3s ease;
         }
         .unit {
-          font-size: 16px;
-          color: ${currentTheme.secondaryTextColor};
+          font-size: ${this.config.unit_font_size};
+          font-weight: ${this.config.unit_font_weight};
+          color: ${this.config.unit_font_color || currentTheme.secondaryTextColor};
         }
         .title {
           margin-top: 10px;

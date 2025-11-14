@@ -258,6 +258,63 @@ title_font_weight: "bold"
 title_font_color: "#00ff00"
 ```
 
+### Center Value and Unit Font Customization
+
+#### Center Value Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `value_font_family` | string | `inherit` | Font family for the center value (e.g., "Roboto, Arial, sans-serif") |
+| `value_font_size` | string | `32px` | Font size for the center value |
+| `value_font_weight` | string/number | `bold` | Font weight for the center value (e.g., "normal", "bold", 300-900) |
+| `value_font_color` | string | - | Custom color for the center value (overrides theme color) |
+
+#### Unit Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `unit_font_size` | string | `16px` | Font size for the unit symbol |
+| `unit_font_weight` | string/number | `normal` | Font weight for the unit (e.g., "normal", "bold", 300-900) |
+| `unit_font_color` | string | - | Custom color for the unit (overrides theme secondary color) |
+
+**Center Value and Unit Font Examples:**
+
+```yaml
+# Large modern value with light weight
+value_font_size: "48px"
+value_font_weight: 300
+value_font_color: "#ffffff"
+unit_font_size: "20px"
+unit_font_weight: normal
+
+# Bold value with custom colors
+value_font_size: "40px"
+value_font_weight: 700
+value_font_color: "#00ff00"
+unit_font_size: "18px"
+unit_font_weight: bold
+unit_font_color: "#888888"
+
+# Custom font family with elegant styling
+value_font_family: "Georgia, serif"
+value_font_size: "36px"
+value_font_weight: 500
+unit_font_size: "14px"
+
+# Compact display
+value_font_size: "28px"
+value_font_weight: normal
+unit_font_size: "12px"
+unit_font_color: "#666666"
+
+# Ultra-bold technical style
+value_font_family: "Consolas, monospace"
+value_font_size: "38px"
+value_font_weight: 900
+unit_font_size: "16px"
+unit_font_weight: 600
+```
+
 ### Animations
 
 | Option | Type | Default | Description |

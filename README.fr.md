@@ -254,6 +254,63 @@ title_font_weight: "bold"
 title_font_color: "#00ff00"
 ```
 
+### Personnalisation de la Police de la Valeur Centrale et de l'Unité
+
+#### Options de la Valeur Centrale
+
+| Option | Type | Défaut | Description |
+|--------|------|--------|-------------|
+| `value_font_family` | string | `inherit` | Police de caractères pour la valeur centrale (ex: "Roboto, Arial, sans-serif") |
+| `value_font_size` | string | `32px` | Taille de la police pour la valeur centrale |
+| `value_font_weight` | string/number | `bold` | Épaisseur de la police pour la valeur (ex: "normal", "bold", 300-900) |
+| `value_font_color` | string | - | Couleur personnalisée pour la valeur (remplace la couleur du thème) |
+
+#### Options de l'Unité
+
+| Option | Type | Défaut | Description |
+|--------|------|--------|-------------|
+| `unit_font_size` | string | `16px` | Taille de la police pour le symbole d'unité |
+| `unit_font_weight` | string/number | `normal` | Épaisseur de la police pour l'unité (ex: "normal", "bold", 300-900) |
+| `unit_font_color` | string | - | Couleur personnalisée pour l'unité (remplace la couleur secondaire du thème) |
+
+**Exemples de Polices pour la Valeur Centrale et l'Unité :**
+
+```yaml
+# Grande valeur moderne avec poids léger
+value_font_size: "48px"
+value_font_weight: 300
+value_font_color: "#ffffff"
+unit_font_size: "20px"
+unit_font_weight: normal
+
+# Valeur grasse avec couleurs personnalisées
+value_font_size: "40px"
+value_font_weight: 700
+value_font_color: "#00ff00"
+unit_font_size: "18px"
+unit_font_weight: bold
+unit_font_color: "#888888"
+
+# Police personnalisée avec style élégant
+value_font_family: "Georgia, serif"
+value_font_size: "36px"
+value_font_weight: 500
+unit_font_size: "14px"
+
+# Affichage compact
+value_font_size: "28px"
+value_font_weight: normal
+unit_font_size: "12px"
+unit_font_color: "#666666"
+
+# Style technique ultra-gras
+value_font_family: "Consolas, monospace"
+value_font_size: "38px"
+value_font_weight: 900
+unit_font_size: "16px"
+unit_font_weight: 600
+```
+
 ### Animations
 
 | Option | Type | Défaut | Description |
