@@ -1,0 +1,191 @@
+/* Custom Gauge Card Styles */
+
+.gauge-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ha-card-header-font-family, Arial), sans-serif;
+  background: var(--card-background);
+  border-radius: 15px;
+  padding: 16px;
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  transition: box-shadow 0.3s ease-in-out;
+}
+
+.gauge {
+  position: relative;
+  width: var(--gauge-size);
+  height: var(--gauge-size);
+  border-radius: 50%;
+  background: var(--gauge-background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.center-shadow {
+  position: absolute;
+  width: var(--center-size);
+  height: var(--center-size);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0));
+  box-shadow: none;
+  transition: box-shadow 0.3s ease-in-out;
+}
+
+.led {
+  position: absolute;
+  width: var(--led-size);
+  height: var(--led-size);
+  background: #333;
+  border-radius: 50%;
+  box-shadow: var(--led-shadow);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.led.active {
+  box-shadow: 0 0 8px currentColor, inset 0 0 3px currentColor;
+}
+
+.center {
+  position: absolute;
+  width: var(--center-size);
+  height: var(--center-size);
+  background: var(--center-background);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-color);
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.value {
+  font-size: var(--value-font-size);
+  font-family: var(--value-font-family);
+  font-weight: var(--value-font-weight);
+  color: var(--value-font-color);
+  transition: all 0.3s ease;
+}
+
+.unit {
+  font-size: var(--unit-font-size);
+  font-weight: var(--unit-font-weight);
+  color: var(--unit-font-color);
+}
+
+.title {
+  margin-top: 10px;
+  font-size: var(--title-font-size);
+  font-family: var(--title-font-family);
+  font-weight: var(--title-font-weight);
+  color: var(--title-font-color);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.trend-indicator {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 4px 8px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: white;
+  z-index: 5;
+}
+
+.trend-arrow {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.marker {
+  position: absolute;
+  width: 4px;
+  height: 12px;
+  background: #fff;
+  border-radius: 2px;
+  z-index: 2;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.marker-label {
+  position: absolute;
+  font-size: 10px;
+  color: #fff;
+  z-index: 2;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
+}
+
+.switch-button {
+  position: absolute;
+  width: 0px;
+  height: 0px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 3;
+  transition: all 0.3s ease;
+  box-shadow: var(--button-shadow);
+  font-size: var(--icon-size, var(--button-icon-size));
+  font-family: system-ui, -apple-system, "Segoe UI", "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+  line-height: 1;
+  font-weight: normal;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.switch-button:hover {
+  transform: scale(1.1);
+  box-shadow: var(--button-hover-shadow);
+}
+
+.switch-button:active {
+  transform: scale(0.95);
+}
+
+.switch-button.on {
+  background: linear-gradient(135deg, #4caf50, #2e7d32);
+  color: #fff;
+  opacity: 1.0;
+  text-shadow: 0 0 10px rgba(76, 175, 80, 1), 0 0 20px rgba(76, 175, 80, 0.6);
+  filter: brightness(1.2);
+}
+
+.switch-button.off {
+  background: linear-gradient(135deg, #666, #333);
+  color: #333;
+  opacity: 0.4;
+  text-shadow: none;
+  filter: grayscale(0.5);
+}
+
+.switch-button.top-left {
+  top: 30px;
+  left: 30px;
+}
+
+.switch-button.top-right {
+  top: 30px;
+  right: 30px;
+}
+
+.switch-button.bottom-left {
+  bottom: 40px;
+  left: 30px;
+}
+
+.switch-button.bottom-right {
+  bottom: 40px;
+  right: 30px;
+}

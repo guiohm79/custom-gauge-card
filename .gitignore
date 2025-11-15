@@ -1,3 +1,10 @@
 CLAUDE.md
 .claude/
 .claude/settings.local.json
+*.bak
+# Build artifacts
+node_modules/
+
+# Package manager
+package-lock.json
+yarn.lock

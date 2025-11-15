@@ -1,0 +1,30 @@
+{
+  "name": "custom-gauge-card",
+  "version": "1.0.0",
+  "description": "A Home Assistant custom card component that provides a visual circular gauge display",
+  "type": "module",
+  "main": "dist/custom-gauge-card.js",
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "watch": "rollup -c -w"
+  },
+  "keywords": [
+    "home-assistant",
+    "custom-card",
+    "gauge",
+    "hacs",
+    "web-component"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.9.6",
+    "rollup-plugin-postcss": "^4.0.2"
+  },
+  "files": [
+    "dist"
+  ]
+}
