@@ -609,6 +609,7 @@ If you like this card, please:
 - ⭐ Star it on GitHub
 - 🐛 Report bugs
 - 💡 Suggest new features
+- [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/guiohm79)
 
 ## License
 
