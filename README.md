@@ -3,11 +3,14 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub Release](https://img.shields.io/github/release/guiohm79/custom-gauge-card.svg)](https://github.com/guiohm79/custom-gauge-card/releases)
 [![License](https://img.shields.io/github/license/guiohm79/custom-gauge-card.svg)](LICENSE)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/guiohm79)
+
 
 A custom card for Home Assistant that displays your sensors as an animated and interactive circular LED gauge.
 
 ## Screenshots
 
+![Exemple 5](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple5.png)
 ![Example 1](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple1.png)
 ![Example 2](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple2.png)
 ![Example 3](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple3.png)
