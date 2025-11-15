@@ -10,7 +10,7 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 
 ## Screenshots
 
-![Exemple 5](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple5.png)
+![Exemple 5](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple5.jpeg)
 ![Example 1](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple1.png)
 ![Example 2](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple2.png)
 ![Example 3](https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple3.png)
