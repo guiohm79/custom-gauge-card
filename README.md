@@ -28,7 +28,8 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 
  **Zones and Markers**
 - Define colored zones to visualize value ranges
-- Add markers with labels for specific reference points
+- Add static markers with labels for specific reference points
+- **New:** Dynamic markers that follow entity values in real-time
 - Flexible color and opacity configuration
 
  **Trend Indicator**
@@ -136,7 +137,7 @@ center_shadow_spread: 5
 # Trend
 show_trend: true
 
-# Markers
+# Static markers (fixed positions)
 markers:
   - value: 1000
     color: "#ffffff"
@@ -144,6 +145,19 @@ markers:
   - value: 2000
     color: "#ffff00"
     label: 2/3
+
+# Dynamic markers (follow entity values in real-time)
+# IMPORTANT: Entity values must be within the gauge's min/max range (0-3000)
+dynamic_markers:
+  - entity: sensor.temperature_sensor_1
+    color: "#FF5722"      # Optional: custom color (or 'auto' for entity-based color)
+    size: 10              # Optional: dot size in pixels (default: 8)
+    label: "Temp 1"       # Optional: custom label text
+    show_value: true      # Optional: display numeric value (default: false)
+  - entity: sensor.temperature_sensor_2
+    color: "auto"         # Auto color based on entity domain
+    label: "Temp 2"
+    show_value: false
 
 # Colored zones
 zones:
@@ -411,9 +425,50 @@ buttons:
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `markers` | list | List of markers with `value`, `color`, `label` |
+| `markers` | list | List of static markers with `value`, `color`, `label` |
+| `dynamic_markers` | list | **NEW:** List of dynamic markers that follow entity values (see below) |
 | `zones` | list | List of zones with `from`, `to`, `color`, `opacity` |
 | `severity` | list | List of thresholds with `value`, `color` for LEDs |
+
+#### Dynamic Markers Configuration
+
+Dynamic markers are circular dots that move around the gauge to reflect real-time entity values.
+
+**IMPORTANT:** The entity values must respect the gauge's min/max scale. If an entity value is outside the range, it will be clamped to the nearest boundary.
+
+| Dynamic Marker Property | Type | Default | Description |
+|-------------------------|------|---------|-------------|
+| `entity` | string | *required* | Entity ID to track (must have numeric state) |
+| `color` | string | `auto` | Color of the dot (hex code or `auto` for domain-based color) |
+| `size` | number | 8 | Size of the circular dot in pixels |
+| `label` | string | - | Optional label text displayed next to the marker |
+| `show_value` | boolean | false | Display the numeric value next to the marker |
+
+**Auto Color Mapping by Entity Domain:**
+- `sensor` → Blue (#2196F3)
+- `input_number` → Green (#4CAF50)
+- `climate` → Orange (#FF9800)
+- `light` → Amber (#FFC107)
+- `switch` → Purple (#9C27B0)
+- `binary_sensor` → Cyan (#00BCD4)
+- Other domains → Green (#4CAF50)
+
+**Example:**
+```yaml
+dynamic_markers:
+  - entity: sensor.outdoor_temperature
+    color: "#FF5722"
+    size: 10
+    label: "Outside"
+    show_value: true
+  - entity: sensor.indoor_temperature
+    color: "auto"  # Will use blue (sensor domain)
+    label: "Inside"
+  - entity: input_number.target_temperature
+    color: "#4CAF50"
+    size: 12
+    show_value: true
+```
 
 ### Optimizations
 
@@ -567,6 +622,63 @@ zones:
   - from: 1500
     to: 3000
     color: "#04fb1d"
+    opacity: 0.3
+```
+
+### Temperature Monitoring with Dynamic Markers
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.room_temperature
+name: Room Climate
+unit: "°C"
+min: -10
+max: 40
+gauge_size: 220
+leds_count: 100
+smooth_transitions: true
+animation_duration: 800
+# Static reference markers
+markers:
+  - value: 18
+    color: "#00bfff"
+    label: "Min"
+  - value: 24
+    color: "#4caf50"
+    label: "Ideal"
+  - value: 28
+    color: "#ff9800"
+    label: "Max"
+# Dynamic markers tracking real sensors
+# IMPORTANT: All sensor values must be within -10 to 40°C range
+dynamic_markers:
+  - entity: sensor.outdoor_temperature
+    color: "#2196F3"
+    size: 10
+    label: "Outside"
+    show_value: true
+  - entity: sensor.indoor_temperature
+    color: "#FF5722"
+    size: 10
+    label: "Inside"
+    show_value: true
+  - entity: input_number.target_temperature
+    color: "#4CAF50"
+    size: 12
+    label: "Target"
+    show_value: true
+zones:
+  - from: -10
+    to: 15
+    color: "#0000ff"
+    opacity: 0.3
+  - from: 15
+    to: 26
+    color: "#4caf50"
+    opacity: 0.2
+  - from: 26
+    to: 40
+    color: "#ff0000"
     opacity: 0.3
 ```
 

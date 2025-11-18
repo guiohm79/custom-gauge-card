@@ -74,7 +74,10 @@ export function parseConfig(config) {
     transparent_gauge_background: config.transparent_gauge_background || false,
     transparent_center_background: config.transparent_center_background || false,
     hide_shadows: config.hide_shadows || false,
-    hide_inactive_leds: config.hide_inactive_leds || false
+    hide_inactive_leds: config.hide_inactive_leds || false,
+
+    // Dynamic markers configuration
+    dynamic_markers: config.dynamic_markers || []
   };
 
   // Backward compatibility: convert old switch config to buttons format

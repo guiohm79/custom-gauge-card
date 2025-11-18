@@ -34,6 +34,17 @@ markers:
   - value: 2000
     color: "#ffff00"
     label: 2/3
+# Dynamic markers - points that follow entity values in real-time
+dynamic_markers:
+  - entity: sensor.temperature_exterieure
+    color: "#FF5722"      # Optional: custom color (or 'auto' for entity-based color)
+    size: 10              # Optional: dot size in pixels (default: 8)
+    label: "Ext"          # Optional: custom label text
+    show_value: true      # Optional: display numeric value (default: false)
+  - entity: sensor.temperature_interieure
+    color: "auto"         # Auto color based on entity domain
+    label: "Int"
+    show_value: false
 zones:
   - from: 0
     to: 750

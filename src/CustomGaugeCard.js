@@ -7,6 +7,7 @@ import { render, setupAccessibility, addMarkersAndZones } from './renderer.js';
 import { setupVisibilityObserver } from './animations.js';
 import { updateGauge, updateLeds, updateCenterShadow, showEntityHistory, showTrendIndicator } from './state.js';
 import { createButtons, updateButtonsState } from './controls.js';
+import { createDynamicMarkers, updateDynamicMarkers, removeDynamicMarkers } from './dynamic-markers.js';
 
 /**
  * Custom Gauge Card Web Component
@@ -45,6 +46,7 @@ export class CustomGaugeCard extends HTMLElement {
     setupAccessibility(this);
     showTrendIndicator(this);
     addMarkersAndZones(this);
+    createDynamicMarkers(this);
     setupVisibilityObserver(this);
   }
 
@@ -63,6 +65,9 @@ export class CustomGaugeCard extends HTMLElement {
 
     // Power save mode: skip updates if not visible
     if (this.config.power_save_mode && !this.isVisible) return;
+
+    // Update dynamic markers
+    updateDynamicMarkers(this, hass);
 
     // Debounce updates if enabled
     if (this.config.debounce_updates) {
