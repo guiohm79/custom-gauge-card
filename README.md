@@ -13,6 +13,7 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 ### Animation
 <p align="center">
   <img src="captures/anim.gif" width="400" alt="Animation du Custom Gauge Card">
+  <img src="captures/anim2.gif" width="400" alt="Animation du Custom Gauge Card 2">
 </p>
 
 ### Exemples d'utilisation
