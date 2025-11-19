@@ -12,28 +12,28 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 
 ### Animation
 <p align="center">
-  <img src="captures/anim.gif" width="400" alt="Animation du Custom Gauge Card">
-  <img src="captures/anim2.gif" width="400" alt="Animation du Custom Gauge Card 2">
+  <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/anim.gif" width="400" alt="Animation du Custom Gauge Card">
+  <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/anim2.gif" width="400" alt="Animation du Custom Gauge Card 2">
 </p>
 
 ### Exemples d'utilisation
 <p align="center">
-  <img src="captures/Exemple1.png" width="350" alt="Exemple 1">
-  <img src="captures/Exemple2.png" width="350" alt="Exemple 2">
+  <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple1.png" width="350" alt="Exemple 1">
+  <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple2.png" width="350" alt="Exemple 2">
 </p>
 
 <p align="center">
-  <img src="captures/Exemple3.png" width="350" alt="Exemple 3">
-  <img src="captures/Exemple4.png" width="350" alt="Exemple 4">
+  <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple3.png" width="350" alt="Exemple 3">
+  <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple4.png" width="350" alt="Exemple 4">
 </p>
 
 <p align="center">
-  <img src="captures/Exemple5.jpeg" width="350" alt="Exemple 5">
-  <img src="captures/Exemple6.png" width="350" alt="Exemple 6">
+  <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple5.jpeg" width="350" alt="Exemple 5">
+  <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple6.png" width="350" alt="Exemple 6">
 </p>
 
 <p align="center">
-  <img src="captures/Exemple7.png" width="350" alt="Exemple 7">
+  <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple7.png" width="350" alt="Exemple 7">
 </p>
 
 
