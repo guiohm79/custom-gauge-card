@@ -45,6 +45,7 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 - Smooth and fluid value transitions
 - Dynamic shadow and lighting effects
 - **New:** Pulsating center shadow alarm for visual alerts
+- **Bidirectional display** for thermometer-style visualization with negative values
 - Customizable themes (light, dark, custom)
 
  **Zones and Markers**
@@ -52,6 +53,7 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 - Add static markers with labels for specific reference points
 - **New:** Dynamic markers that follow entity values in real-time
 - Flexible color and opacity configuration
+- Full support for bidirectional mode
 
  **Trend Indicator**
 - Display 24-hour evolution
@@ -254,6 +256,7 @@ debounce_updates: true
 | `center_size` | number | 120 | Center size in pixels |
 | `led_size` | number | 8 | LED size in pixels |
 | `leds_count` | number | 100 | Number of LEDs |
+| `bidirectional` | boolean | false | Enable bidirectional display (thermometer-style for negative values) |
 
 ### Themes
 
@@ -366,6 +369,50 @@ unit_font_weight: 600
 |--------|------|---------|-------------|
 | `smooth_transitions` | boolean | true | Enable smooth transitions |
 | `animation_duration` | number | 800 | Animation duration in ms |
+
+### Bidirectional Display
+
+The bidirectional mode enables a thermometer-style display for gauges with values spanning negative to positive ranges (e.g., -10°C to +40°C).
+
+**How it works:**
+- **Reference point**: Automatically set at zero (if within range) or at the midpoint
+- **Positive values**: LEDs activate clockwise from the top (12 o'clock position)
+- **Negative values**: LEDs activate counter-clockwise from the top
+- **LED allocation**: Proportional to range sizes (unequal ranges create unequal LED distributions)
+
+**When to use:**
+- Temperature sensors with negative values (-20°C to 50°C)
+- Thermostat offsets (-5°C to +5°C)
+- Power flow indicators (negative = discharge, positive = charge)
+- Altitude changes, pressure differentials, balance indicators
+
+**Visual comparison:**
+
+```
+Standard mode (bidirectional: false):
+Min ────────────────────→ Max
+[●][●][●][●][●][●][●][●]
+Linear progression
+
+Bidirectional mode (bidirectional: true):
+    ↑ Zero point (top)
+[●]←← Negative | Positive →→[●]
+Symmetric display from center
+```
+
+**Configuration:**
+
+```yaml
+bidirectional: true  # Enable thermometer-style display
+min: -10             # Minimum value (can be negative)
+max: 40              # Maximum value
+```
+
+**Important notes:**
+- Severity colors use the full range for consistency
+- Markers and zones work seamlessly in bidirectional mode
+- Animations handle zero-crossing smoothly
+- LED count is automatically distributed proportionally to range sizes
 
 ### Visual Effects
 
@@ -816,6 +863,79 @@ custom_secondary_text_color: "#00d4ff"
 smooth_transitions: true
 animation_duration: 1000
 ```
+
+### Bidirectional Temperature Gauge
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.outdoor_temperature
+name: Outdoor Temperature
+unit: "°C"
+min: -20          # Negative minimum
+max: 50           # Positive maximum
+bidirectional: true  # Enable thermometer-style display
+
+gauge_size: 220
+leds_count: 100
+decimals: 1
+smooth_transitions: true
+animation_duration: 800
+
+# Visual effects
+enable_shadow: true
+center_shadow: true
+center_shadow_blur: 35
+center_shadow_spread: 12
+
+# Severity uses full range (not just positive or negative side)
+severity:
+  - color: "#0077be"    # Blue: freezing
+    value: 0            # From -20°C to 0°C
+  - color: "#4caf50"    # Green: comfortable
+    value: 25           # From 0°C to 25°C
+  - color: "#ff9800"    # Orange: warm
+    value: 40           # From 25°C to 40°C
+  - color: "#ff6b35"    # Red: hot
+    value: 50           # From 40°C to 50°C
+
+# Markers work with bidirectional mode
+markers:
+  - value: 0
+    color: "#ffffff"
+    label: "0°C"        # Zero reference point
+  - value: 20
+    color: "#4caf50"
+    label: "Ideal"
+
+# Zones follow the bidirectional logic
+zones:
+  - from: -20
+    to: 0
+    color: "#0077be"
+    opacity: 0.2
+  - from: 0
+    to: 25
+    color: "#4caf50"
+    opacity: 0.2
+  - from: 25
+    to: 50
+    color: "#ff9800"
+    opacity: 0.2
+
+# Optional: Alarm when too cold
+center_shadow_pulse: true
+center_shadow_pulse_duration: 1500
+center_shadow_pulse_min: -20
+center_shadow_pulse_max: -5
+center_shadow_pulse_intensity: 0.3
+```
+
+**How this works:**
+- **Zero point at top**: 0°C sits at 12 o'clock position
+- **Negative values**: -20°C to 0°C, LEDs activate counter-clockwise (left side)
+- **Positive values**: 0°C to 50°C, LEDs activate clockwise (right side)
+- **LED allocation**: ~29% for negative range (-20 to 0), ~71% for positive range (0 to 50)
+- **Visual effect**: Creates an intuitive thermometer where cold is on the left, hot on the right
 
 ### Water Tank with Pulsating Alarm
 
