@@ -24,6 +24,7 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 - Circular gauge with animated LEDs
 - Smooth and fluid value transitions
 - Dynamic shadow and lighting effects
+- **New:** Pulsating center shadow alarm for visual alerts
 - Customizable themes (light, dark, custom)
 
  **Zones and Markers**
@@ -134,6 +135,13 @@ center_shadow: true
 center_shadow_blur: 30
 center_shadow_spread: 5
 
+# Pulsating alarm (NEW feature)
+center_shadow_pulse: true           # Enable pulsation alarm
+center_shadow_pulse_duration: 1500  # Duration of one cycle in ms
+center_shadow_pulse_min: 0          # Alarm when value >= 0L (real sensor value)
+center_shadow_pulse_max: 750        # Alarm when value <= 750L (real sensor value)
+center_shadow_pulse_intensity: 0.3  # Minimum intensity (0.3 = 30% to 100%)
+
 # Trend
 show_trend: true
 
@@ -174,14 +182,14 @@ zones:
     color: "#04fb1d"
     opacity: 0.3
 
-# Severity colors (for LEDs)
+# Severity colors (for LEDs) - uses REAL sensor values (0-3000L)
 severity:
-  - color: "#ff2d00"
-    value: 25
-  - color: "#fb8804"
-    value: 50
-  - color: "#04fb1d"
-    value: 100
+  - color: "#ff2d00"    # Red
+    value: 750          # Red from 0 to 750L
+  - color: "#fb8804"    # Orange
+    value: 1500         # Orange from 750 to 1500L
+  - color: "#04fb1d"    # Green
+    value: 3000         # Green from 1500 to 3000L
 
 # Multi-button control (optional)
 button_icon_size: 22  # Default icon size for all buttons (in pixels)
@@ -347,6 +355,11 @@ unit_font_weight: 600
 | `center_shadow` | boolean | false | Enable center shadow |
 | `center_shadow_blur` | number | 30 | Center shadow blur |
 | `center_shadow_spread` | number | 15 | Center shadow spread |
+| `center_shadow_pulse` | boolean | false | **NEW:** Enable pulsation alarm on center shadow |
+| `center_shadow_pulse_duration` | number | 1000 | Duration of one complete pulsation cycle in ms |
+| `center_shadow_pulse_min` | number | `min` | Minimum value of alarm zone (uses real sensor values, not percentages) |
+| `center_shadow_pulse_max` | number | `max` | Maximum value of alarm zone (uses real sensor values, not percentages) |
+| `center_shadow_pulse_intensity` | number | 0.5 | Minimum intensity during pulsation (0-1) |
 
 ### Background Transparency
 
@@ -425,10 +438,12 @@ buttons:
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `markers` | list | List of static markers with `value`, `color`, `label` |
+| `markers` | list | List of static markers with `value`, `color`, `label` (uses real sensor values) |
 | `dynamic_markers` | list | **NEW:** List of dynamic markers that follow entity values (see below) |
-| `zones` | list | List of zones with `from`, `to`, `color`, `opacity` |
-| `severity` | list | List of thresholds with `value`, `color` for LEDs |
+| `zones` | list | List of zones with `from`, `to`, `color`, `opacity` (uses real sensor values) |
+| `severity` | list | **UPDATED:** List of thresholds with `value`, `color` for LEDs (uses real sensor values, not percentages) |
+
+**Important:** All configuration values (`markers`, `zones`, `severity`, `pulse_min/max`) now use **real sensor values** for consistency and ease of use.
 
 #### Dynamic Markers Configuration
 
@@ -492,14 +507,47 @@ unit: "°C"
 min: 10
 max: 35
 severity:
-  - color: "#00bfff"
-    value: 30
-  - color: "#4caf50"
-    value: 60
-  - color: "#ff9800"
-    value: 80
-  - color: "#f44336"
-    value: 100
+  - color: "#00bfff"    # Blue
+    value: 16           # Blue from 10-16°C (cold)
+  - color: "#4caf50"    # Green
+    value: 22           # Green from 16-22°C (comfortable)
+  - color: "#ff9800"    # Orange
+    value: 28           # Orange from 22-28°C (warm)
+  - color: "#f44336"    # Red
+    value: 35           # Red from 28-35°C (hot)
+```
+
+### Temperature Gauge with High Temperature Alarm
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.living_room_temperature
+name: Living Room Temperature
+unit: "°C"
+min: 10
+max: 35
+# Visual effects with pulsation alarm
+enable_shadow: true
+center_shadow: true
+center_shadow_blur: 35
+center_shadow_spread: 12
+
+# Alarm when temperature is too high (>28°C)
+center_shadow_pulse: true
+center_shadow_pulse_duration: 1200     # Moderately fast pulsation
+center_shadow_pulse_min: 28            # Alarm starts at 28°C
+center_shadow_pulse_max: 35            # Alarm until max
+center_shadow_pulse_intensity: 0.4     # Deep pulsation effect
+
+severity:
+  - color: "#00bfff"    # Blue
+    value: 16           # Blue from 10-16°C
+  - color: "#4caf50"    # Green
+    value: 22           # Green from 16-22°C
+  - color: "#ff9800"    # Orange
+    value: 28           # Orange from 22-28°C
+  - color: "#f44336"    # Red
+    value: 35           # Red from 28-35°C
 ```
 
 ### Battery Level
@@ -526,6 +574,54 @@ zones:
     to: 100
     color: "#2196f3"
     opacity: 0.3
+```
+
+### Battery Level with Low Battery Alarm
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.phone_battery
+name: Phone Battery
+unit: "%"
+min: 0
+max: 100
+leds_count: 50
+show_trend: true
+
+# Visual effects
+enable_shadow: true
+center_shadow: true
+center_shadow_blur: 30
+center_shadow_spread: 8
+
+# Alarm when battery is critically low (<15%)
+center_shadow_pulse: true
+center_shadow_pulse_duration: 800      # Fast pulsation for urgency
+center_shadow_pulse_min: 0             # Alarm from 0%
+center_shadow_pulse_max: 15            # Alarm until 15%
+center_shadow_pulse_intensity: 0.2     # Very pronounced pulsation
+
+zones:
+  - from: 0
+    to: 20
+    color: "#f44336"
+    opacity: 0.5
+  - from: 20
+    to: 80
+    color: "#4caf50"
+    opacity: 0.3
+  - from: 80
+    to: 100
+    color: "#2196f3"
+    opacity: 0.3
+
+severity:
+  - color: "#f44336"    # Red
+    value: 20           # Red from 0-20% (critical)
+  - color: "#ff9800"    # Orange
+    value: 50           # Orange from 20-50% (low)
+  - color: "#4caf50"    # Green
+    value: 100          # Green from 50-100% (good)
 ```
 
 ### Power Consumption with Multi-Button Control
@@ -578,12 +674,12 @@ buttons:
     position: bottom-right
     icon: "🌙"
 severity:
-  - color: "#00bfff"
-    value: 40
-  - color: "#4caf50"
-    value: 70
-  - color: "#ff9800"
-    value: 100
+  - color: "#00bfff"    # Blue
+    value: 19           # Blue from 15-19°C (cold)
+  - color: "#4caf50"    # Green
+    value: 24           # Green from 19-24°C (comfortable)
+  - color: "#ff9800"    # Orange
+    value: 30           # Orange from 24-30°C (warm)
 ```
 
 ### Water Tank Level with Multiple Zones
@@ -699,6 +795,90 @@ custom_text_color: "#e94560"
 custom_secondary_text_color: "#00d4ff"
 smooth_transitions: true
 animation_duration: 1000
+```
+
+### Water Tank with Pulsating Alarm
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.water_tank_level
+name: Water Tank
+unit: L
+min: 0
+max: 3000
+gauge_size: 250
+leds_count: 150
+decimals: 0
+
+# Visual effects
+enable_shadow: true
+center_shadow: true
+center_shadow_blur: 40
+center_shadow_spread: 10
+
+# Pulsating alarm when level is critically low (0-500L)
+center_shadow_pulse: true
+center_shadow_pulse_duration: 1500      # Slow pulsation for critical alert
+center_shadow_pulse_min: 0              # Start of alarm zone
+center_shadow_pulse_max: 500            # End of alarm zone
+center_shadow_pulse_intensity: 0.2      # Deep pulsation (20% to 100%)
+
+# Severity colors - uses REAL sensor values (0-3000L)
+severity:
+  - color: "#ff0000"     # Red for low levels
+    value: 750           # Red from 0-750L
+  - color: "#ff9800"     # Orange for medium
+    value: 1500          # Orange from 750-1500L
+  - color: "#4caf50"     # Green for good levels
+    value: 3000          # Green from 1500-3000L
+
+zones:
+  - from: 0
+    to: 500
+    color: "#ff0000"
+    opacity: 0.4
+  - from: 500
+    to: 1500
+    color: "#ff9800"
+    opacity: 0.3
+  - from: 1500
+    to: 3000
+    color: "#4caf50"
+    opacity: 0.3
+
+buttons:
+  - entity: switch.pump
+    position: bottom-right
+    icon: "⚡"
+```
+
+**How the pulsating alarm works:**
+- When the water level is between 0-500L (critical zone), the center shadow pulses
+- **Important:** `pulse_min` and `pulse_max` use the **real sensor values** (0-3000L in this example), not percentages
+- The pulsation combines intensity and opacity changes for maximum visibility
+- Duration of 1500ms creates a noticeable but not annoying effect
+- Intensity of 0.2 means the shadow varies from 20% to 100% strength
+- The pulsation automatically stops when the value goes above 500L
+
+**Configuration Tips:**
+```yaml
+# For a tank with 0-3000L range, alarm when critically low (0-500L)
+min: 0
+max: 3000
+center_shadow_pulse_min: 0      # Alarm starts at 0 liters
+center_shadow_pulse_max: 500    # Alarm stops at 500 liters
+
+# For a temperature sensor (-10 to 40°C), alarm when too hot (>30°C)
+min: -10
+max: 40
+center_shadow_pulse_min: 30     # Alarm starts at 30°C
+center_shadow_pulse_max: 40     # Alarm until maximum
+
+# For a battery (0-100%), alarm when low (<20%)
+min: 0
+max: 100
+center_shadow_pulse_min: 0      # Alarm at 0%
+center_shadow_pulse_max: 20     # Alarm until 20%
 ```
 
 ## Compatibility

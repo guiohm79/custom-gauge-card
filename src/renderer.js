@@ -4,7 +4,7 @@
 
 import stylesCSS from './styles.css';
 import { getTheme } from './config.js';
-import { optimizeLEDs } from './utils.js';
+import { optimizeLEDs, valueToAngle } from './utils.js';
 
 /**
  * Generate CSS variables from theme and config
@@ -138,8 +138,7 @@ export function addMarkersAndZones(context) {
   // Add markers
   if (context.config.markers) {
     context.config.markers.forEach(marker => {
-      const percentage = ((marker.value - min) / range) * 100;
-      const angle = (percentage / 100) * 360;
+      const angle = valueToAngle(marker.value, min, max, context.config.bidirectional);
 
       const markerElement = document.createElement('div');
       markerElement.className = 'marker';
@@ -178,11 +177,14 @@ export function addMarkersAndZones(context) {
   // Add zones
   if (context.config.zones) {
     context.config.zones.forEach(zone => {
-      const startPercentage = ((zone.from - min) / range) * 100;
-      const endPercentage = ((zone.to - min) / range) * 100;
-      const startAngle = (startPercentage / 100) * 360;
-      const endAngle = (endPercentage / 100) * 360;
-      const arcAngle = endAngle - startAngle;
+      const startAngle = valueToAngle(zone.from, min, max, context.config.bidirectional);
+      const endAngle = valueToAngle(zone.to, min, max, context.config.bidirectional);
+
+      // Calculate arc angle (handle wrapping around 0°/360°)
+      let arcAngle = endAngle - startAngle;
+      if (arcAngle < 0) {
+        arcAngle += 360;
+      }
 
       const svgNS = "http://www.w3.org/2000/svg";
       const svg = document.createElementNS(svgNS, "svg");

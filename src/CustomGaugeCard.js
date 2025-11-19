@@ -4,7 +4,7 @@
 
 import { parseConfig } from './config.js';
 import { render, setupAccessibility, addMarkersAndZones } from './renderer.js';
-import { setupVisibilityObserver } from './animations.js';
+import { setupVisibilityObserver, stopCenterShadowPulsation } from './animations.js';
 import { updateGauge, updateLeds, updateCenterShadow, showEntityHistory, showTrendIndicator } from './state.js';
 import { createButtons, updateButtonsState } from './controls.js';
 import { createDynamicMarkers, updateDynamicMarkers, removeDynamicMarkers } from './dynamic-markers.js';
@@ -24,6 +24,7 @@ export class CustomGaugeCard extends HTMLElement {
     this.updateTimer = null;
     this.isVisible = true;
     this.animationInterval = null;
+    this.pulsationInterval = null;
     this.buttonsInitialized = false;
 
     this.attachShadow({ mode: "open" });
@@ -41,7 +42,9 @@ export class CustomGaugeCard extends HTMLElement {
       .getElementById("gauge-container")
       .addEventListener("click", () => showEntityHistory(this));
 
-    this._updateLeds(0, this.ledsCount);
+    const min = this.config.min || 0;
+    const max = this.config.max || 100;
+    this._updateLeds(min, this.ledsCount, min, max);
 
     setupAccessibility(this);
     showTrendIndicator(this);
@@ -80,6 +83,36 @@ export class CustomGaugeCard extends HTMLElement {
       }, this.config.update_interval);
     } else {
       this._updateGauge();
+    }
+  }
+
+  /**
+   * Cleanup when element is removed from DOM
+   */
+  disconnectedCallback() {
+    // Clear all timers and intervals to prevent memory leaks
+    if (this.updateTimer) {
+      clearTimeout(this.updateTimer);
+      this.updateTimer = null;
+    }
+
+    if (this.animationInterval) {
+      clearInterval(this.animationInterval);
+      this.animationInterval = null;
+    }
+
+    if (this.pulsationInterval) {
+      clearInterval(this.pulsationInterval);
+      this.pulsationInterval = null;
+    }
+
+    // Stop pulsation if active
+    stopCenterShadowPulsation(this);
+
+    // Disconnect intersection observer if exists
+    if (this.intersectionObserver) {
+      this.intersectionObserver.disconnect();
+      this.intersectionObserver = null;
     }
   }
 }

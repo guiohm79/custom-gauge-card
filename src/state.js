@@ -2,8 +2,8 @@
  * State management for the gauge card
  */
 
-import { getLedColor } from './utils.js';
-import { animateValueChange } from './animations.js';
+import { getLedColor, calculateBidirectionalLeds } from './utils.js';
+import { animateValueChange, startCenterShadowPulsation } from './animations.js';
 
 /**
  * Update the gauge based on current state
@@ -24,11 +24,13 @@ export function updateGauge(context) {
     animateValueChange(context, previousState, state, min, max);
   } else {
     // Direct update without animation
-    const normalizedValue = ((state - min) / (max - min)) * 100;
     const ledsCount = context.ledsCount || context.config.leds_count || 100;
 
-    updateLeds(context, normalizedValue, ledsCount);
-    updateCenterShadow(context, normalizedValue);
+    updateLeds(context, state, ledsCount, min, max);
+
+    // For center shadow, use normalized value for color but pass real value for pulsation
+    const normalizedValue = ((state - min) / (max - min)) * 100;
+    updateCenterShadow(context, normalizedValue, state, min, max);
 
     const valueDisplay = context.shadowRoot.querySelector(".value");
     const unitDisplay = context.shadowRoot.querySelector(".unit");
@@ -48,12 +50,17 @@ export function updateGauge(context) {
 /**
  * Update LED states
  * @param {Object} context - The card instance context
- * @param {number} value - Current value percentage
+ * @param {number} value - Current value (actual value, not normalized)
  * @param {number} ledsCount - Number of LEDs
+ * @param {number} min - Minimum value
+ * @param {number} max - Maximum value
  */
-export function updateLeds(context, value, ledsCount) {
-  const activeLeds = Math.round((value / 100) * ledsCount);
-  const color = getLedColor(value, context.config.severity);
+export function updateLeds(context, value, ledsCount, min, max) {
+  const bidirectional = context.config.bidirectional || false;
+  const ledInfo = calculateBidirectionalLeds(value, min, max, ledsCount, bidirectional);
+
+  // Pass min and max to getLedColor so severity can use real sensor values
+  const color = getLedColor(ledInfo.normalizedValue, context.config.severity, min, max);
 
   if (context.config.enable_shadow) {
     const gaugeContainer = context.shadowRoot.getElementById("gauge-container");
@@ -66,7 +73,21 @@ export function updateLeds(context, value, ledsCount) {
     const led = context.shadowRoot.getElementById(`led-${i}`);
     if (!led) continue;
 
-    if (i < activeLeds) {
+    let isActive = false;
+
+    if (ledInfo.direction === 'unidirectional') {
+      // Standard unidirectional mode: activate from LED 0 onwards
+      isActive = i < ledInfo.activeLeds;
+    } else if (ledInfo.direction === 'positive') {
+      // Bidirectional positive: activate clockwise from LED 0
+      isActive = i < ledInfo.activeLeds;
+    } else if (ledInfo.direction === 'negative') {
+      // Bidirectional negative: activate counter-clockwise from LED 0
+      // LED 0 is the zero point (12h) and must be included, then LEDs go backwards (99, 98, 97...)
+      isActive = (i === 0) || (i > (ledsCount - ledInfo.activeLeds));
+    }
+
+    if (isActive) {
       led.style.display = "";
       led.style.background = `radial-gradient(circle, rgba(255, 255, 255, 0.8), ${color})`;
       led.style.boxShadow = `0 0 8px ${color}`;
@@ -87,18 +108,33 @@ export function updateLeds(context, value, ledsCount) {
 /**
  * Update center shadow effect
  * @param {Object} context - The card instance context
- * @param {number} value - Current value percentage
+ * @param {number} value - Current value percentage (for color calculation)
+ * @param {number} realValue - Current real value (for pulsation threshold)
+ * @param {number} min - Minimum value of the gauge
+ * @param {number} max - Maximum value of the gauge
  */
-export function updateCenterShadow(context, value) {
+export function updateCenterShadow(context, value, realValue, min, max) {
   if (!context.config.center_shadow) return;
 
-  const color = getLedColor(value, context.config.severity);
+  // Pass min and max to getLedColor so severity can use real sensor values
+  const color = getLedColor(value, context.config.severity, min, max);
   const blur = context.config.center_shadow_blur || 30;
   const spread = context.config.center_shadow_spread || 15;
   const centerShadow = context.shadowRoot.getElementById("center-shadow");
 
+  // Store current color for pulsation
+  context.currentShadowColor = color;
+
   if (centerShadow) {
-    centerShadow.style.boxShadow = `0 0 ${blur}px ${spread}px ${color}`;
+    // Only apply direct shadow if pulsation is not active
+    if (!context.pulsationInterval) {
+      centerShadow.style.boxShadow = `0 0 ${blur}px ${spread}px ${color}`;
+    }
+  }
+
+  // Check and manage pulsation using real values
+  if (context.config.center_shadow_pulse && realValue !== undefined && min !== undefined && max !== undefined) {
+    startCenterShadowPulsation(context, realValue, min, max);
   }
 }
 

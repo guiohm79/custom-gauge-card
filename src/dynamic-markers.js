@@ -131,9 +131,42 @@ export function updateDynamicMarkers(context, hass) {
     value = Math.max(min, Math.min(max, value));
 
     // Calculate angle based on value
-    const percentage = ((value - min) / range) * 100;
-    const angle = (percentage / 100) * 360;
-    const targetAngle = angle - 90; // Offset to start at top
+    let targetAngle;
+
+    if (context.config.bidirectional) {
+      // Bidirectional mode: reference point at top (0°/-90° rotated)
+
+      // Determine reference point (adaptive zero)
+      const referencePoint = (min <= 0 && max >= 0) ? 0 : (min + max) / 2;
+
+      // Calculate range sizes on each side of reference
+      const totalRange = max - min;
+      const lowerRange = referencePoint - min;  // Size from min to reference
+      const upperRange = max - referencePoint;  // Size from reference to max
+
+      // Calculate proportional angle allocation (total 360°)
+      const lowerProportion = lowerRange / totalRange;
+      const upperProportion = upperRange / totalRange;
+      const maxLowerAngle = lowerProportion * 360;  // Degrees allocated to lower side
+      const maxUpperAngle = upperProportion * 360;  // Degrees allocated to upper side
+
+      if (value >= referencePoint) {
+        // Upper values: go clockwise from top
+        const percentage = upperRange > 0 ? ((value - referencePoint) / upperRange) * 100 : 0;
+        const angle = (percentage / 100) * maxUpperAngle;  // 0° to maxUpperAngle
+        targetAngle = angle - 90;
+      } else {
+        // Lower values: go counter-clockwise from top
+        const percentage = lowerRange > 0 ? ((referencePoint - value) / lowerRange) * 100 : 0;
+        const angle = 360 - ((percentage / 100) * maxLowerAngle);  // 360° down by maxLowerAngle
+        targetAngle = angle - 90;
+      }
+    } else {
+      // Unidirectional mode: standard linear mapping
+      const percentage = ((value - min) / range) * 100;
+      const angle = (percentage / 100) * 360;
+      targetAngle = angle - 90; // Offset to start at top
+    }
 
     // Update marker position with smooth transition
     const container = markerData.element;

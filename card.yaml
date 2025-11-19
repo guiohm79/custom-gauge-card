@@ -26,6 +26,12 @@ enable_shadow: true
 center_shadow: true
 center_shadow_blur: 30
 center_shadow_spread: 5
+# Configuration de l'alarme visuelle par pulsation du center_shadow
+center_shadow_pulse: true              # Active la pulsation (défaut: false)
+center_shadow_pulse_duration: 1500     # Durée d'un cycle complet en ms (défaut: 1000)
+center_shadow_pulse_min: 0             # Valeur minimale zone alarme en VALEURS REELLES (ici 0L, défaut: min)
+center_shadow_pulse_max: 750           # Valeur maximale zone alarme en VALEURS REELLES (ici 750L, défaut: max)
+center_shadow_pulse_intensity: 0.3     # Intensité minimale de la pulsation 0-1 (défaut: 0.5)
 show_trend: true
 markers:
   - value: 1000
@@ -81,10 +87,11 @@ buttons:
     position: bottom-left
     icon: "▶"
 # Note: L'ancienne config (show_switch_button, switch_entity) est toujours supportée pour rétrocompatibilité
+# Severity colors based on REAL sensor values (not percentages!)
 severity:
-  - color: "#ff2d00"
-    value: 25
-  - color: "#fb8804"
-    value: 50
-  - color: "#04fb1d"
-    value: 100
+  - color: "#ff2d00"    # Red
+    value: 750          # Red from 0 to 750L
+  - color: "#fb8804"    # Orange
+    value: 1500         # Orange from 750 to 1500L
+  - color: "#04fb1d"    # Green
+    value: 3000         # Green from 1500 to 3000L

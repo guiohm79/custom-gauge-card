@@ -33,6 +33,7 @@
   border-radius: 50%;
   background: radial-gradient(circle, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0));
   box-shadow: none;
+  /* Transition is disabled during pulsation for smoother animation control via JS */
   transition: box-shadow 0.3s ease-in-out;
 }
 

@@ -35,6 +35,11 @@ export const themes = {
  * Parse and validate configuration
  * @param {Object} config - Raw configuration from YAML
  * @returns {Object} Parsed and validated configuration
+ *
+ * Note: severity and markers configurations use real sensor values (not percentages)
+ * Example for a 0-3000L tank:
+ *   severity: [{ color: "#ff0000", value: 750 }]  // Red until 750L (not 25%)
+ *   center_shadow_pulse_min: 0, center_shadow_pulse_max: 750  // Alarm from 0-750L
  */
 export function parseConfig(config) {
   if (!config.entity) {
@@ -77,7 +82,17 @@ export function parseConfig(config) {
     hide_inactive_leds: config.hide_inactive_leds || false,
 
     // Dynamic markers configuration
-    dynamic_markers: config.dynamic_markers || []
+    dynamic_markers: config.dynamic_markers || [],
+
+    // Bidirectional display for negative values
+    bidirectional: config.bidirectional || false,
+
+    // Center shadow pulsation alarm configuration (uses real sensor values, not percentages)
+    center_shadow_pulse: config.center_shadow_pulse || false,
+    center_shadow_pulse_duration: config.center_shadow_pulse_duration || 1000,
+    center_shadow_pulse_min: config.center_shadow_pulse_min !== undefined ? config.center_shadow_pulse_min : (config.min || 0),
+    center_shadow_pulse_max: config.center_shadow_pulse_max !== undefined ? config.center_shadow_pulse_max : (config.max || 100),
+    center_shadow_pulse_intensity: config.center_shadow_pulse_intensity !== undefined ? config.center_shadow_pulse_intensity : 0.5
   };
 
   // Backward compatibility: convert old switch config to buttons format
