@@ -87,6 +87,11 @@ export function parseConfig(config) {
     // Bidirectional display for negative values
     bidirectional: config.bidirectional || false,
 
+    // Card container dimensions
+    card_width: config.card_width || null,
+    card_height: config.card_height || null,
+    card_padding: config.card_padding || '16px',
+
     // Center shadow pulsation alarm configuration (uses real sensor values, not percentages)
     center_shadow_pulse: config.center_shadow_pulse || false,
     center_shadow_pulse_duration: config.center_shadow_pulse_duration || 1000,

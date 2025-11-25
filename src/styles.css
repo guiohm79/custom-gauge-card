@@ -9,7 +9,9 @@
   font-family: var(--ha-card-header-font-family, Arial), sans-serif;
   background: var(--card-background);
   border-radius: 15px;
-  padding: 16px;
+  width: var(--card-width);
+  height: var(--card-height);
+  padding: var(--card-padding);
   box-shadow: var(--card-shadow);
   cursor: pointer;
   transition: box-shadow 0.3s ease-in-out;

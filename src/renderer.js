@@ -27,6 +27,9 @@ function generateCSSVariables(theme, config) {
     --gauge-size: ${gaugeSize}px;
     --center-size: ${centerSize}px;
     --led-size: ${ledSize}px;
+    --card-width: ${config.card_width || 'auto'};
+    --card-height: ${config.card_height || 'auto'};
+    --card-padding: ${config.card_padding};
     --card-shadow: ${hideShadows ? 'none' : '0 0 15px rgba(0, 0, 0, 0.5)'};
     --led-shadow: ${hideShadows ? 'none' : '0 0 4px rgba(0, 0, 0, 0.8)'};
     --button-shadow: ${hideShadows ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.3)'};
