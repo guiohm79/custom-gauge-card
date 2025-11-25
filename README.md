@@ -133,6 +133,11 @@ led_size: 7
 leds_count: 150
 decimals: 0
 
+# Card container dimensions (optional)
+card_width: 300px       # Custom width
+card_height: 350px      # Custom height
+card_padding: 20px      # Custom padding
+
 # Theme
 theme: custom  # default, light, dark, custom
 custom_background: "#2c2c2c"
@@ -257,6 +262,9 @@ debounce_updates: true
 | `led_size` | number | 8 | LED size in pixels |
 | `leds_count` | number | 100 | Number of LEDs |
 | `bidirectional` | boolean | false | Enable bidirectional display (thermometer-style for negative values) |
+| `card_width` | string | `auto` | **NEW:** Width of the card container (e.g., "300px") |
+| `card_height` | string | `auto` | **NEW:** Height of the card container (e.g., "350px") |
+| `card_padding` | string | `16px` | **NEW:** Padding of the card container |
 
 ### Themes
 
@@ -563,6 +571,35 @@ dynamic_markers:
 
 
 ## Usage Examples
+
+### Card Container Sizing
+
+You can now customize the dimensions of the card container:
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.temperature
+name: Temperature
+unit: "°C"
+min: 0
+max: 40
+
+# Default behavior (auto-sized based on gauge_size)
+# No card dimensions specified
+
+# OR customize the container size:
+card_width: 300px        # Fixed width
+card_height: 350px       # Fixed height
+card_padding: 20px       # Increase padding
+
+# Card container respects CSS units (px, %, em, rem, vw, vh, etc.)
+```
+
+**Use cases:**
+- **Fixed dimensions**: Perfect for grid layouts where you want consistent card sizes
+- **Responsive sizing**: Use viewport units (`vw`, `vh`) for responsive designs
+- **Custom padding**: Adjust spacing inside the card for better visual balance
+- **Default behavior**: Omit these options to keep the automatic sizing based on `gauge_size`
 
 ### Temperature Gauge
 
