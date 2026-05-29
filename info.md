@@ -1,5 +1,5 @@
 {% if installed %}
-## Thank you for installing Custom Gauge Card! 🎉
+## Thank you for installing Custom Gauge Card v2! 🎉
 
 The card is now installed and ready to use in your Home Assistant dashboards.
 
@@ -29,7 +29,7 @@ max: 100
 - 💡 [Request Features](https://github.com/guiohm79/custom-gauge-card/issues/new)
 
 {% else %}
-## Custom Gauge Card
+## Custom Gauge Card v2
 
 A modern, animated circular LED gauge card for Home Assistant.
 
@@ -37,12 +37,16 @@ A modern, animated circular LED gauge card for Home Assistant.
 
 ### ✨ Key Features
 
-- 🎨 **Animated LED Gauge** - Beautiful circular gauge with smooth animations
-- 🎯 **Zones & Markers** - Visual indicators for value ranges
-- 📊 **Trend Indicator** - 24-hour history at a glance
-- 🎮 **Multi-Button Control** - Control multiple entities with customizable buttons
-- ⚡ **Performance Optimized** - Power save mode and consistent rendering
-- 🎨 **Customizable Themes** - Light, dark, and custom themes
+- 🎨 **Animated LED Gauge** — Beautiful circular gauge with smooth animations
+- 🔧 **Arc Control** — Full YAML control over arc span and start angle (`arc_sweep`, `arc_start`)
+- 📐 **Scale Ticks** — SVG graduation overlay with major/minor ticks and value labels
+- 🖱️ **Tap Action** — Configurable click behavior (more-info, navigate, call-service, none)
+- 🎛️ **Visual Editor** — Full GUI editor with collapsible sections, no YAML required
+- 🎯 **Zones & Markers** — Colored zones, static markers, and real-time dynamic markers
+- 📊 **Trend Indicator** — 24-hour history at a glance
+- 🎮 **Multi-Button Control** — Control multiple entities with customizable buttons
+- ⚡ **Performance Optimized** — Power save mode and consistent rendering
+- 🎨 **Customizable Themes** — Light, dark, and custom themes
 
 ### 📋 Requirements
 
@@ -71,11 +75,16 @@ min: 10
 max: 35
 gauge_size: 220
 leds_count: 150
+arc_sweep: 270
+arc_start: 135
+scale_ticks: true
+scale_steps: 5
 smooth_transitions: true
 enable_shadow: true
 center_shadow: true
 show_trend: true
-# Multi-button control
+tap_action:
+  action: more-info
 buttons:
   - entity: light.living_room
     position: top-right
@@ -83,13 +92,13 @@ buttons:
     position: bottom-right
 severity:
   - color: "#00bfff"
-    value: 30
+    value: 16
   - color: "#4caf50"
-    value: 60
+    value: 22
   - color: "#ff9800"
-    value: 80
+    value: 28
   - color: "#f44336"
-    value: 100
+    value: 35
 ```
 
 ### 🌟 Support
@@ -100,3 +109,4 @@ If you like this card:
 - 💡 Suggest new features
 
 ---
+{% endif %}

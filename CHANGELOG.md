@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-05-29
+
+### Added
+- `arc_sweep` (30–360°) and `arc_start` — full YAML control over arc span and start angle
+- `scale_ticks`, `scale_steps`, `scale_labels` — SVG graduation overlay with major/minor ticks and value labels
+- `tap_action` — configurable click behavior (`more-info`, `navigate`, `call-service`, `none`)
+- `getCardSize()` — correct card height in Home Assistant grid layout
+- `getStubConfig()` — minimal stub config for the HA visual card picker
+- Visual editor — full GUI editor with collapsible sections for all card parameters, using native HA components (`ha-selector`, `ha-entity-picker`, `ha-expansion-panel`)
+- Registration in `window.customCards` — card now appears in the HA card picker UI
+
+### Fixed
+- `.switch-button` was 0×0 px — buttons are now correctly sized at 36×36 px and visible
+- `showTrendIndicator()` was called before `_hass` was set, causing silent failures — now called on first `set hass()` with a one-shot flag
+- Bidirectional mode now works correctly on partial arcs (zero reference at arc midpoint)
+- Markers, zones and dynamic markers now respect `arc_start`/`arc_sweep` via `valueToArcAngle()`
+
+### Changed
+- Rewritten as a single self-contained IIFE file — no build step required
+- Card can now be deployed directly to `config/www/` without running `npm run build`
+
+### Removed
+- Modular `src/` architecture and Rollup build pipeline
+
 ## [1.0.4] - 2025-10-29
 
 ### Added
@@ -75,6 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example configuration in card.yaml
 - Screenshot (Capture1.png)
 
+[2.0.0]: https://github.com/guiohm79/custom-gauge-card/compare/v1.0.4...v2.0.0
 [1.0.4]: https://github.com/guiohm79/custom-gauge-card/compare/v1.0.3.1...v1.0.4
 [1.0.3.1]: https://github.com/guiohm79/custom-gauge-card/compare/v1.0.3...v1.0.3.1
 [1.0.3]: https://github.com/guiohm79/custom-gauge-card/compare/v1.0.2...v1.0.3

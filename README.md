@@ -1,4 +1,4 @@
-# Custom Gauge Card
+# Custom Gauge Card v2
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 [![GitHub Release](https://img.shields.io/github/release/guiohm79/custom-gauge-card.svg)](https://github.com/guiohm79/custom-gauge-card/releases)
@@ -22,7 +22,7 @@ A custom card for Home Assistant that displays your sensors as an animated and i
   <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/anim2.gif" width="400" alt="Animation du Custom Gauge Card 2">
 </p>
 
-### Exemples d'utilisation
+### Usage examples
 <p align="center">
   <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple1.png" width="350" alt="Exemple 1">
   <img src="https://raw.githubusercontent.com/guiohm79/custom-gauge-card/main/captures/Exemple2.png" width="350" alt="Exemple 2">
@@ -44,20 +44,32 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 
 
 
+## What's new in v2
+
+- **Arc control** — `arc_sweep` (30–360°) and `arc_start` give you full YAML control over the arc span and start angle
+- **Scale ticks** — `scale_ticks`, `scale_steps`, `scale_labels` add an SVG graduation overlay with major/minor ticks and value labels
+- **Tap action** — configurable click behavior (`more-info`, `navigate`, `call-service`, `none`)
+- **Visual editor** — full GUI editor with collapsible sections for all card parameters, using native HA components
+- **Card picker** — card now appears in the HA card picker UI and shows a live preview
+- **Single file** — no build step required; copy `custom-gauge-card.js` directly to `config/www/`
+- **Bug fixes** — buttons now correctly sized at 36×36 px; bidirectional mode on partial arcs; markers/zones respect `arc_start`/`arc_sweep`
+
 ## Features
 
  **Modern Animated Design**
 - Circular gauge with animated LEDs
 - Smooth and fluid value transitions
 - Dynamic shadow and lighting effects
-- **New:** Pulsating center shadow alarm for visual alerts
+- Pulsating center shadow alarm for visual alerts
 - **Bidirectional display** for thermometer-style visualization with negative values
 - Customizable themes (light, dark, custom)
+- Configurable arc span and start angle (`arc_sweep`, `arc_start`)
 
- **Zones and Markers**
+ **Scale and Markers**
+- SVG scale overlay with major/minor ticks and value labels (`scale_ticks`)
 - Define colored zones to visualize value ranges
 - Add static markers with labels for specific reference points
-- **New:** Dynamic markers that follow entity values in real-time
+- Dynamic markers that follow entity values in real-time
 - Flexible color and opacity configuration
 - Full support for bidirectional mode
 
@@ -138,6 +150,19 @@ center_size: 120
 led_size: 7
 leds_count: 150
 decimals: 0
+
+# Arc (v2) — controls the visible portion of the gauge ring
+arc_sweep: 270          # Arc span in degrees (30–360, default 360)
+arc_start: 135          # Start angle in degrees from top/12 o'clock (default 0)
+
+# Scale ticks (v2)
+scale_ticks: true       # Show SVG graduation overlay
+scale_steps: 5          # Number of major tick intervals
+scale_labels: true      # Show value labels at each tick
+
+# Tap action (v2)
+tap_action:
+  action: more-info     # more-info | navigate | call-service | none
 
 # Card container dimensions (optional)
 card_width: 300px       # Custom width
@@ -375,6 +400,52 @@ value_font_size: "38px"
 value_font_weight: 900
 unit_font_size: "16px"
 unit_font_weight: 600
+```
+
+### Arc (v2)
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `arc_sweep` | number | 360 | Arc span in degrees (30–360). Use values below 360 for a partial gauge (e.g. 270 for a C-shape) |
+| `arc_start` | number | 0 | Start angle in degrees from the top/12 o'clock position, clockwise |
+
+**Example — 270° gauge starting at bottom-left:**
+```yaml
+arc_sweep: 270
+arc_start: 135   # bottom-left → sweeps clockwise to bottom-right
+```
+
+### Scale Ticks (v2)
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `scale_ticks` | boolean | false | Show SVG graduation overlay on the gauge |
+| `scale_steps` | number | 5 | Number of major tick intervals |
+| `scale_labels` | boolean | true | Show value labels at each tick |
+
+### Tap Action (v2)
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `tap_action` | object | `{action: more-info}` | Configurable click behavior |
+
+**Supported actions:**
+```yaml
+tap_action:
+  action: more-info       # Open entity detail dialog (default)
+
+tap_action:
+  action: navigate
+  navigation_path: /lovelace/0
+
+tap_action:
+  action: call-service
+  service: light.toggle
+  service_data:
+    entity_id: light.living_room
+
+tap_action:
+  action: none            # Disable click
 ```
 
 ### Animations
@@ -1069,6 +1140,8 @@ center_shadow_pulse_max: 20     # Alarm until 20%
 - Home Assistant 2024.1.0 or higher
 - All modern browsers supporting Web Components
 - Mobile and tablet compatible
+
+> **v2 note:** The card is now a single self-contained IIFE file. No build step or `npm` required — just copy `custom-gauge-card.js` to `config/www/`.
 
 
 ## Contributing
