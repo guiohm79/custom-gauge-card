@@ -967,7 +967,7 @@
         .cols-2 { grid-template-columns: 1fr 1fr; }
         .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
         .cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
-        ha-selector, ha-entity-picker { display: block; }
+        ha-selector { display: block; }
         .info { font-size: 12px; color: var(--secondary-text-color); font-style: italic;
                 padding: 8px 10px; background: var(--secondary-background-color);
                 border-radius: 6px; margin: 0; line-height: 1.5; }
@@ -1005,20 +1005,8 @@
       const root = shadow.getElementById('root');
 
       // ── Essentials ──────────────────────────────────────────────────────────
-      const epWrap = document.createElement('div');
-      epWrap.className = 'field';
-      const epLbl = document.createElement('label');
-      epLbl.className = 'field-label';
-      epLbl.textContent = 'Entity *';
-      const ep = document.createElement('ha-entity-picker');
-      ep.setAttribute('data-sel', '');
-      ep.value = cfg.entity || '';
-      if (this._hass) ep.hass = this._hass;
-      ep.addEventListener('value-changed', e => { e.stopPropagation(); this._change('entity', e.detail.value); });
-      epWrap.append(epLbl, ep);
-
       root.appendChild(this._section('Essentials',
-        epWrap,
+        this._sel('entity', { entity: {} }, 'Entity *'),
         this._row(2,
           this._sel('name',     { text: {} },   'Display name'),
           this._sel('unit',     { text: {} },   'Unit'),
