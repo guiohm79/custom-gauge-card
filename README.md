@@ -143,6 +143,7 @@ name: Water Tank 1 Level
 unit: L
 min: 0
 max: 3000
+# attribute: volume_liters  # Optional: display an attribute instead of state
 
 # Appearance
 gauge_size: 220
@@ -278,6 +279,7 @@ debounce_updates: true
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `entity` | string | **Required** | Entity to display |
+| `attribute` | string | - | Attribute of the entity to display instead of its state (e.g. `current_temperature`) |
 | `name` | string | - | Name displayed below the gauge |
 | `unit` | string | - | Unit of measurement |
 | `min` | number | 0 | Minimum value |
@@ -401,6 +403,60 @@ value_font_weight: 900
 unit_font_size: "16px"
 unit_font_weight: 600
 ```
+
+### Attribute Display
+
+By default the gauge reads the **state** of the entity. Use `attribute` to display one of its attributes instead.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `attribute` | string | - | Attribute name to read from the entity (leave empty to use entity state) |
+
+**When to use:**
+- A `climate` entity whose `state` is `heat`/`off` — use `attribute: current_temperature` or `attribute: temperature` to show a numeric value
+- A device that exposes multiple numeric values as attributes (voltage, current, power…)
+- Any entity where the useful number lives in an attribute rather than the state
+
+**Visual editor:** after selecting an entity, a dropdown lists all its available attributes. Click **✕** to clear the selection and return to using the entity state.
+
+**Examples:**
+
+```yaml
+# Climate — display current temperature
+type: custom:custom-gauge-card
+entity: climate.salon
+attribute: current_temperature
+name: Living Room Temp
+unit: "°C"
+min: 15
+max: 30
+```
+
+```yaml
+# Climate — display target (setpoint) temperature
+type: custom:custom-gauge-card
+entity: climate.bedroom
+attribute: temperature
+name: Bedroom Setpoint
+unit: "°C"
+min: 15
+max: 25
+```
+
+```yaml
+# Device with power attribute
+type: custom:custom-gauge-card
+entity: sensor.smart_plug
+attribute: current_power_w
+name: Power
+unit: W
+min: 0
+max: 3000
+```
+
+> **Note:** The `unit` option is always set manually. When using an attribute the card does not auto-read the entity's `unit_of_measurement`.
+
+---
 
 ### Arc (v2)
 
@@ -605,7 +661,8 @@ Dynamic markers are circular dots that move around the gauge to reflect real-tim
 
 | Dynamic Marker Property | Type | Default | Description |
 |-------------------------|------|---------|-------------|
-| `entity` | string | *required* | Entity ID to track (must have numeric state) |
+| `entity` | string | *required* | Entity ID to track (must have a numeric state or attribute) |
+| `attribute` | string | - | Attribute to read instead of the entity state (e.g. `current_temperature`) |
 | `color` | string | `auto` | Color of the dot (hex code or `auto` for domain-based color) |
 | `size` | number | 8 | Size of the circular dot in pixels |
 | `label` | string | - | Optional label text displayed next to the marker |
@@ -634,6 +691,13 @@ dynamic_markers:
   - entity: input_number.target_temperature
     color: "#4CAF50"
     size: 12
+    show_value: true
+  # Using an attribute from a climate entity
+  - entity: climate.bedroom
+    attribute: current_temperature
+    color: "#9C27B0"
+    size: 10
+    label: "Bedroom"
     show_value: true
 ```
 
