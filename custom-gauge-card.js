@@ -143,6 +143,7 @@
 
     const c = {
       ...config,
+      attribute:                    config.attribute || null,
       update_interval:              config.update_interval || 1000,
       power_save_mode:              config.power_save_mode || false,
       power_save_threshold:         config.power_save_threshold || 10,
@@ -383,7 +384,8 @@
       const entity = hass.states[entityId];
       if (!entity) { md.element.style.opacity = '0'; return; }
       md.element.style.opacity = '1';
-      const val = Math.max(min, Math.min(max, parseFloat(entity.state)));
+      const rawVal = md.config.attribute ? entity.attributes[md.config.attribute] : entity.state;
+      const val = Math.max(min, Math.min(max, parseFloat(rawVal)));
       if (isNaN(val)) return;
       const topDeg = valueToArcAngle(val, min, max, arcStart, arcSweep, bidirectional);
       const targetAngle = topDeg - 90;
@@ -585,7 +587,10 @@
   function updateGauge(ctx) {
     const entityState = ctx._hass.states[ctx.config.entity];
     if (!entityState) return;
-    const state = parseFloat(entityState.state || '0');
+    const rawValue = ctx.config.attribute
+      ? entityState.attributes[ctx.config.attribute]
+      : entityState.state;
+    const state = parseFloat(rawValue ?? '0');
     const prev  = ctx.previousState !== null ? ctx.previousState : state;
     const min   = ctx.config.min || 0;
     const max   = ctx.config.max || 100;
@@ -738,7 +743,7 @@
       // Only rebuild when a key that controls section visibility changes.
       // Compare against _builtConfig (snapshot at last _build), not _config,
       // because _change() updates _config immediately before HA calls setConfig.
-      const STRUCTURAL = ['theme', 'center_shadow', 'center_shadow_pulse'];
+      const STRUCTURAL = ['theme', 'center_shadow', 'center_shadow_pulse', 'entity'];
       if (STRUCTURAL.some(k => (this._builtConfig || {})[k] !== config[k])) this._build();
     }
 
@@ -852,6 +857,47 @@
       });
 
       row.append(picker, valTxt, clearBtn);
+      wrap.appendChild(row);
+      return wrap;
+    }
+
+    _attrField(entityId) {
+      const wrap = document.createElement('div');
+      wrap.className = 'field';
+      const lbl = document.createElement('label');
+      lbl.className = 'field-label';
+      lbl.textContent = 'Attribute (optional)';
+      wrap.appendChild(lbl);
+
+      const row = document.createElement('div');
+      row.className = 'attr-field-row';
+
+      const sel = document.createElement('ha-selector');
+      sel.setAttribute('data-sel', '');
+      sel.setAttribute('data-key', 'attribute');
+      sel.selector = { attribute: { entity_id: entityId } };
+      sel.value = this._config.attribute || '';
+      if (this._hass) sel.hass = this._hass;
+
+      const clearBtn = document.createElement('button');
+      clearBtn.textContent = '✕';
+      clearBtn.className = 'attr-field-clear';
+      clearBtn.title = 'Use entity state (no attribute)';
+      clearBtn.style.visibility = this._config.attribute ? 'visible' : 'hidden';
+
+      sel.addEventListener('value-changed', e => {
+        e.stopPropagation();
+        const v = e.detail.value || null;
+        clearBtn.style.visibility = v ? 'visible' : 'hidden';
+        this._change('attribute', v);
+      });
+      clearBtn.addEventListener('click', () => {
+        sel.value = '';
+        clearBtn.style.visibility = 'hidden';
+        this._change('attribute', null);
+      });
+
+      row.append(sel, clearBtn);
       wrap.appendChild(row);
       return wrap;
     }
@@ -988,6 +1034,13 @@
                              cursor: pointer; font-size: 12px; line-height: 1; flex-shrink: 0;
                              opacity: 0.55; transition: opacity .15s; }
         .color-field-clear:hover { opacity: 1; }
+        .attr-field-row { display: flex; align-items: center; gap: 8px; }
+        .attr-field-row ha-selector { flex: 1; min-width: 0; }
+        .attr-field-clear { width: 26px; height: 26px; border-radius: 50%; border: none;
+                            background: var(--secondary-text-color, #888); color: white;
+                            cursor: pointer; font-size: 12px; line-height: 1; flex-shrink: 0;
+                            opacity: 0.55; transition: opacity .15s; }
+        .attr-field-clear:hover { opacity: 1; }
       </style><div class="editor" id="root"></div>`;
 
       const root = shadow.getElementById('root');
@@ -995,6 +1048,9 @@
       // ── Essentials ──────────────────────────────────────────────────────────
       root.appendChild(this._section('Essentials',
         this._sel('entity', { entity: {} }, 'Entity *'),
+        cfg.entity
+          ? this._attrField(cfg.entity)
+          : this._info('Select an entity first to pick an attribute.'),
         this._row(2,
           this._sel('name',     { text: {} },   'Display name'),
           this._sel('unit',     { text: {} },   'Unit'),
