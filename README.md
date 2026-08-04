@@ -44,6 +44,11 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 
 
 
+## What's new in v2.2
+
+- **Alarms** — `alarms:` replaces the single `center_shadow_pulse`: any number of alarms, each watching **any entity** (not just the gauge one), with 8 condition types (`range`, `outside`, `above`, `below`, `equal`, `state`, `state_not`, `unavailable`) and 4 visual effects (`shadow_pulse`, `leds_blink`, `value_blink`, `border_pulse`), plus a per-alarm color. See [Alarms](#alarms-v22)
+- **Backward compatible** — existing `center_shadow_pulse*` configurations keep working unchanged
+
 ## What's new in v2
 
 - **Arc control** — `arc_sweep` (30–360°) and `arc_start` give you full YAML control over the arc span and start angle
@@ -60,7 +65,7 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 - Circular gauge with animated LEDs
 - Smooth and fluid value transitions
 - Dynamic shadow and lighting effects
-- Pulsating center shadow alarm for visual alerts
+- Multi-entity alarms with four visual effects (pulsating shadow, blinking LEDs, blinking value, pulsating card border)
 - **Bidirectional display** for thermometer-style visualization with negative values
 - Customizable themes (light, dark, custom)
 - Configurable arc span and start angle (`arc_sweep`, `arc_start`)
@@ -194,12 +199,19 @@ center_shadow: true
 center_shadow_blur: 30
 center_shadow_spread: 5
 
-# Pulsating alarm (NEW feature)
-center_shadow_pulse: true           # Enable pulsation alarm
-center_shadow_pulse_duration: 1500  # Duration of one cycle in ms
-center_shadow_pulse_min: 0          # Alarm when value >= 0L (real sensor value)
-center_shadow_pulse_max: 750        # Alarm when value <= 750L (real sensor value)
-center_shadow_pulse_intensity: 0.3  # Minimum intensity (0.3 = 30% to 100%)
+# Alarms (v2.2) — any entity, any effect
+alarms:
+  - condition: range                # alarm while 0L <= value <= 750L
+    min: 0
+    max: 750
+    effect: shadow_pulse
+    duration: 1500                  # one cycle, in ms
+    intensity: 0.3                  # trough of the cycle (30% to 100%)
+  - entity: binary_sensor.pump_fault  # watch another entity entirely
+    condition: state
+    state: "on"
+    effect: border_pulse
+    color: "#f44336"
 
 # Trend
 show_trend: true
@@ -563,11 +575,143 @@ max: 40              # Maximum value
 | `center_shadow` | boolean | false | Enable center shadow |
 | `center_shadow_blur` | number | 30 | Center shadow blur |
 | `center_shadow_spread` | number | 15 | Center shadow spread |
-| `center_shadow_pulse` | boolean | false | **NEW:** Enable pulsation alarm on center shadow |
-| `center_shadow_pulse_duration` | number | 1000 | Duration of one complete pulsation cycle in ms |
-| `center_shadow_pulse_min` | number | `min` | Minimum value of alarm zone (uses real sensor values, not percentages) |
-| `center_shadow_pulse_max` | number | `max` | Maximum value of alarm zone (uses real sensor values, not percentages) |
-| `center_shadow_pulse_intensity` | number | 0.5 | Minimum intensity during pulsation (0-1) |
+| `center_shadow_pulse` | boolean | false | *Deprecated in v2.2 — see [Alarms](#alarms-v22).* Enable pulsation alarm on center shadow |
+| `center_shadow_pulse_duration` | number | 1000 | *Deprecated.* Duration of one complete pulsation cycle in ms |
+| `center_shadow_pulse_min` | number | `min` | *Deprecated.* Minimum value of alarm zone (uses real sensor values, not percentages) |
+| `center_shadow_pulse_max` | number | `max` | *Deprecated.* Maximum value of alarm zone (uses real sensor values, not percentages) |
+| `center_shadow_pulse_intensity` | number | 0.5 | *Deprecated.* Minimum intensity during pulsation (0-1) |
+
+### Alarms (v2.2)
+
+An alarm watches an entity and applies a visual effect for as long as its condition is met.
+The watched entity **does not have to be the gauge entity** — this is what makes it possible to,
+say, flash a battery gauge based on a separate `sensor.battery_power` value, without
+`config-template-card`.
+
+```yaml
+alarms:
+  - entity: sensor.battery_power   # optional — defaults to the gauge entity
+    condition: below
+    value: 0
+    effect: shadow_pulse           # see the effect list below
+    color: "#f44336"
+    duration: 900
+    intensity: 0.3
+```
+
+Several alarms can be active at once, as long as they use different effects.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `entity` | string | gauge entity | Entity to watch |
+| `attribute` | string | – | Read this attribute instead of the state |
+| `condition` | string | `range` | See the condition table below |
+| `min` / `max` | number | gauge `min`/`max` | Bounds for `range` and `outside` |
+| `value` | number | 0 | Threshold for `above`, `below`, `equal` |
+| `state` | string | `on` | Compared string for `state` and `state_not` |
+| `effect` | string | `shadow_pulse` | See the effect table below |
+| `color` | string | severity color | Alarm color — ignored by `leds_blink` |
+| `duration` | number | 1000 | One full cycle, in ms (minimum 100) |
+| `intensity` | number | 0.5 | Trough of the cycle, 0 = full flash, 1 = no visible pulse |
+| `name` | string | – | Label shown in the visual editor only |
+
+**Conditions**
+
+| `condition` | Fires when |
+|-------------|------------|
+| `range` | the reading is between `min` and `max`, bounds included — the default |
+| `outside` | the reading is below `min` or above `max` |
+| `above` | the reading is strictly greater than `value` |
+| `below` | the reading is strictly lower than `value` |
+| `equal` | the reading equals `value` |
+| `state` | the state string equals `state` |
+| `state_not` | the state string differs from `state` |
+| `unavailable` | the entity is missing, `unavailable` or `unknown` |
+
+Numeric conditions never fire on a non-numeric or unavailable state.
+
+**Effects**
+
+| `effect` | Result |
+|----------|--------|
+| `shadow_pulse` | The center shadow pulses. Works with `center_shadow: false` too — the shadow then only appears while the alarm is active |
+| `leds_blink` | The lit LEDs blink, keeping their severity colors |
+| `value_blink` | The center value and unit blink, tinted with `color` |
+| `border_pulse` | A colored halo pulses around the whole card |
+
+Examples:
+
+```yaml
+# Flash the gauge while a separate power sensor is discharging
+alarms:
+  - entity: sensor.battery_power
+    condition: below
+    value: 0
+    effect: leds_blink
+    duration: 700
+
+# Highlight the card while a leak detector is on
+alarms:
+  - entity: binary_sensor.water_leak
+    condition: state
+    state: "on"
+    effect: border_pulse
+    color: "#f44336"
+
+# Two alarms on one card: warning then critical
+alarms:
+  - condition: range
+    min: 28
+    max: 32
+    effect: value_blink
+    color: "#ff9800"
+  - condition: above
+    value: 32
+    effect: shadow_pulse
+    color: "#f44336"
+    duration: 600
+    intensity: 0.15
+
+# Warn when a thermostat's target temperature drifts out of a comfort band
+alarms:
+  - entity: climate.living_room
+    attribute: temperature
+    condition: outside
+    min: 18
+    max: 23
+    effect: border_pulse
+
+# Warn when the sensor stops reporting
+alarms:
+  - condition: unavailable
+    effect: value_blink
+    color: "#9e9e9e"
+    duration: 2000
+```
+
+**Migrating from `center_shadow_pulse`**
+
+The old keys keep working — they are silently converted into a single alarm, so no existing
+configuration breaks. `alarms:` takes precedence when both are present, and opening the card in
+the visual editor and touching the alarm section rewrites the old keys into the new format.
+
+```yaml
+# Before (still supported)
+center_shadow_pulse: true
+center_shadow_pulse_min: 0
+center_shadow_pulse_max: 750
+center_shadow_pulse_duration: 1500
+center_shadow_pulse_intensity: 0.3
+
+# After
+alarms:
+  - condition: range
+    min: 0
+    max: 750
+    effect: shadow_pulse
+    duration: 1500
+    intensity: 0.3
+```
 
 ### Background Transparency
 
@@ -778,11 +922,12 @@ center_shadow_blur: 35
 center_shadow_spread: 12
 
 # Alarm when temperature is too high (>28°C)
-center_shadow_pulse: true
-center_shadow_pulse_duration: 1200     # Moderately fast pulsation
-center_shadow_pulse_min: 28            # Alarm starts at 28°C
-center_shadow_pulse_max: 35            # Alarm until max
-center_shadow_pulse_intensity: 0.4     # Deep pulsation effect
+alarms:
+  - condition: above
+    value: 28
+    effect: shadow_pulse
+    duration: 1200                     # Moderately fast pulsation
+    intensity: 0.4                     # Deep pulsation effect
 
 severity:
   - color: "#00bfff"    # Blue
@@ -840,11 +985,19 @@ center_shadow_blur: 30
 center_shadow_spread: 8
 
 # Alarm when battery is critically low (<15%)
-center_shadow_pulse: true
-center_shadow_pulse_duration: 800      # Fast pulsation for urgency
-center_shadow_pulse_min: 0             # Alarm from 0%
-center_shadow_pulse_max: 15            # Alarm until 15%
-center_shadow_pulse_intensity: 0.2     # Very pronounced pulsation
+alarms:
+  - condition: below
+    value: 15
+    effect: shadow_pulse
+    duration: 800                      # Fast pulsation for urgency
+    intensity: 0.2                     # Very pronounced pulsation
+  # Bonus: blink the LEDs while the battery is actually discharging,
+  # driven by a second entity
+  - entity: sensor.battery_power
+    condition: below
+    value: 0
+    effect: leds_blink
+    duration: 900
 
 zones:
   - from: 0
@@ -1101,11 +1254,13 @@ zones:
     opacity: 0.2
 
 # Optional: Alarm when too cold
-center_shadow_pulse: true
-center_shadow_pulse_duration: 1500
-center_shadow_pulse_min: -20
-center_shadow_pulse_max: -5
-center_shadow_pulse_intensity: 0.3
+alarms:
+  - condition: range
+    min: -20
+    max: -5
+    effect: shadow_pulse
+    duration: 1500
+    intensity: 0.3
 ```
 
 **How this works:**
@@ -1135,11 +1290,13 @@ center_shadow_blur: 40
 center_shadow_spread: 10
 
 # Pulsating alarm when level is critically low (0-500L)
-center_shadow_pulse: true
-center_shadow_pulse_duration: 1500      # Slow pulsation for critical alert
-center_shadow_pulse_min: 0              # Start of alarm zone
-center_shadow_pulse_max: 500            # End of alarm zone
-center_shadow_pulse_intensity: 0.2      # Deep pulsation (20% to 100%)
+alarms:
+  - condition: range
+    min: 0                              # Start of alarm zone
+    max: 500                            # End of alarm zone
+    effect: shadow_pulse
+    duration: 1500                      # Slow pulsation for critical alert
+    intensity: 0.2                      # Deep pulsation (20% to 100%)
 
 # Severity colors - uses REAL sensor values (0-3000L)
 severity:
@@ -1172,7 +1329,7 @@ buttons:
 
 **How the pulsating alarm works:**
 - When the water level is between 0-500L (critical zone), the center shadow pulses
-- **Important:** `pulse_min` and `pulse_max` use the **real sensor values** (0-3000L in this example), not percentages
+- **Important:** `min` and `max` use the **real sensor values** (0-3000L in this example), not percentages
 - The pulsation combines intensity and opacity changes for maximum visibility
 - Duration of 1500ms creates a noticeable but not annoying effect
 - Intensity of 0.2 means the shadow varies from 20% to 100% strength
@@ -1183,20 +1340,26 @@ buttons:
 # For a tank with 0-3000L range, alarm when critically low (0-500L)
 min: 0
 max: 3000
-center_shadow_pulse_min: 0      # Alarm starts at 0 liters
-center_shadow_pulse_max: 500    # Alarm stops at 500 liters
+alarms:
+  - condition: below
+    value: 500                  # Alarm below 500 liters
+    effect: shadow_pulse
 
 # For a temperature sensor (-10 to 40°C), alarm when too hot (>30°C)
 min: -10
 max: 40
-center_shadow_pulse_min: 30     # Alarm starts at 30°C
-center_shadow_pulse_max: 40     # Alarm until maximum
+alarms:
+  - condition: above
+    value: 30                   # Alarm above 30°C
+    effect: shadow_pulse
 
 # For a battery (0-100%), alarm when low (<20%)
 min: 0
 max: 100
-center_shadow_pulse_min: 0      # Alarm at 0%
-center_shadow_pulse_max: 20     # Alarm until 20%
+alarms:
+  - condition: below
+    value: 20                   # Alarm below 20%
+    effect: shadow_pulse
 ```
 
 ## Compatibility
