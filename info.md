@@ -42,6 +42,7 @@ A modern, animated circular LED gauge card for Home Assistant.
 - 📐 **Scale Ticks** — SVG graduation overlay with major/minor ticks and value labels
 - 🖱️ **Tap Action** — Configurable click behavior (more-info, navigate, call-service, none)
 - 🎛️ **Visual Editor** — Full GUI editor with collapsible sections, no YAML required
+- 🚨 **Alarms** — Any number of alarms, each watching any entity, with four visual effects (pulsating shadow, blinking LEDs, blinking value, pulsating border)
 - 🎯 **Zones & Markers** — Colored zones, static markers, and real-time dynamic markers
 - 📊 **Trend Indicator** — 24-hour history at a glance
 - 🎮 **Multi-Button Control** — Control multiple entities with customizable buttons
@@ -99,6 +100,16 @@ severity:
     value: 28
   - color: "#f44336"
     value: 35
+alarms:
+  - condition: above
+    value: 28
+    effect: shadow_pulse
+    duration: 1200
+  - entity: binary_sensor.window_open
+    condition: state
+    state: "on"
+    effect: border_pulse
+    color: "#03a9f4"
 ```
 
 ### 🌟 Support

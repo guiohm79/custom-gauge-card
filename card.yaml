@@ -26,12 +26,24 @@ enable_shadow: true
 center_shadow: true
 center_shadow_blur: 30
 center_shadow_spread: 5
-# Configuration de l'alarme visuelle par pulsation du center_shadow
-center_shadow_pulse: true              # Active la pulsation (défaut: false)
-center_shadow_pulse_duration: 1500     # Durée d'un cycle complet en ms (défaut: 1000)
-center_shadow_pulse_min: 0             # Valeur minimale zone alarme en VALEURS REELLES (ici 0L, défaut: min)
-center_shadow_pulse_max: 750           # Valeur maximale zone alarme en VALEURS REELLES (ici 750L, défaut: max)
-center_shadow_pulse_intensity: 0.3     # Intensité minimale de la pulsation 0-1 (défaut: 0.5)
+# Alarmes (v2.2) — chaque alarme surveille une entité et applique un effet visuel
+# tant que sa condition est vraie. Les anciennes clés center_shadow_pulse_* restent
+# supportées et sont converties automatiquement en une alarme.
+alarms:
+  # Alarme sur l'entité de la jauge : cuve basse (VALEURS REELLES, ici des litres)
+  - condition: range                   # range | outside | above | below | equal | state | state_not | unavailable
+    min: 0
+    max: 750
+    effect: shadow_pulse               # shadow_pulse | leds_blink | value_blink | border_pulse
+    duration: 1500                     # durée d'un cycle complet en ms (défaut: 1000)
+    intensity: 0.3                     # creux du cycle 0-1 (défaut: 0.5)
+  # Alarme sur une AUTRE entité : halo rouge autour de la carte en cas de défaut pompe
+  - entity: binary_sensor.defaut_pompe
+    condition: state
+    state: "on"
+    effect: border_pulse
+    color: "#f44336"                   # optionnel — sinon la couleur severity de la jauge
+    name: Défaut pompe                 # optionnel — libellé dans l'éditeur visuel
 show_trend: true
 markers:
   - value: 1000

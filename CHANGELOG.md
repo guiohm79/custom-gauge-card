@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-08-04
+
+### Added
+- `alarms:` — a list of alarms replacing the single pulsating alarm. Each alarm can watch **any entity**, not only the gauge entity, which removes the need for `config-template-card` wrappers ([discussion #16](https://github.com/guiohm79/custom-gauge-card/discussions/16))
+- 8 alarm conditions: `range`, `outside`, `above`, `below`, `equal`, `state`, `state_not`, `unavailable`
+- 4 alarm effects: `shadow_pulse` (the former behavior), `leds_blink`, `value_blink`, `border_pulse`
+- Per-alarm `color`, `duration`, `intensity`, `attribute` and `name`
+- Several alarms can be active at the same time, one per effect
+- Visual editor — the "Pulsating alarm" section becomes "Alarms", with add/remove rows and condition-dependent fields
+
+### Changed
+- `shadow_pulse` no longer requires `center_shadow: true` — with the center shadow off, the shadow now appears only while the alarm is active (it used to stay visible permanently in that configuration)
+- Alarms are evaluated on every state update, bypassing `debounce_updates`, so an alert is never delayed
+- Alarm effects are dropped while the card is off-screen under `power_save_mode`
+
+### Fixed
+- The pulsating shadow never reached its target color: the 300 ms CSS transition on `.center-shadow` lagged behind the 16 ms pulse tick. Only visible now that an alarm can define its own color, but the transition was fighting the pulse all along
+- `hexToRgba()` accepts `#rgb` shorthand and no longer produces `rgba(NaN,…)` on unexpected color notations
+
+### Deprecated
+- `center_shadow_pulse`, `center_shadow_pulse_min`, `center_shadow_pulse_max`, `center_shadow_pulse_duration`, `center_shadow_pulse_intensity` — still fully supported, silently converted into a single alarm. `alarms:` takes precedence when both are present
+
 ## [2.0.0] - 2026-05-29
 
 ### Added
@@ -99,6 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example configuration in card.yaml
 - Screenshot (Capture1.png)
 
+[2.2.0]: https://github.com/guiohm79/custom-gauge-card/compare/v2.0.0...v2.2.0
 [2.0.0]: https://github.com/guiohm79/custom-gauge-card/compare/v1.0.4...v2.0.0
 [1.0.4]: https://github.com/guiohm79/custom-gauge-card/compare/v1.0.3.1...v1.0.4
 [1.0.3.1]: https://github.com/guiohm79/custom-gauge-card/compare/v1.0.3...v1.0.3.1

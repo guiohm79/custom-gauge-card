@@ -21,6 +21,7 @@ Une carte personnalisée pour Home Assistant qui affiche vos capteurs sous forme
 - Jauge circulaire avec LEDs animées
 - Transitions fluides et douces entre les valeurs
 - Effets d'ombre et de lumière dynamiques
+- Alarmes multi-entités avec quatre effets visuels (ombre pulsante, LEDs clignotantes, valeur clignotante, bordure pulsante)
 - Thèmes personnalisables (clair, sombre, personnalisé)
 
  **Zones et Marqueurs**
@@ -127,6 +128,20 @@ enable_shadow: true
 center_shadow: true
 center_shadow_blur: 30
 center_shadow_spread: 5
+
+# Alarmes (v2.2) — n'importe quelle entité, n'importe quel effet
+alarms:
+  - condition: range                  # alarme tant que 0L <= valeur <= 750L
+    min: 0
+    max: 750
+    effect: shadow_pulse
+    duration: 1500                    # durée d'un cycle en ms
+    intensity: 0.3                    # creux du cycle (30% à 100%)
+  - entity: binary_sensor.defaut_pompe  # surveille une tout autre entité
+    condition: state
+    state: "on"
+    effect: border_pulse
+    color: "#f44336"
 
 # Tendance
 show_trend: true
@@ -328,6 +343,129 @@ unit_font_weight: 600
 | `center_shadow` | boolean | false | Activer l'ombre au centre |
 | `center_shadow_blur` | number | 30 | Flou de l'ombre centrale |
 | `center_shadow_spread` | number | 15 | Expansion de l'ombre centrale |
+
+### Alarmes (v2.2)
+
+Une alarme surveille une entité et applique un effet visuel tant que sa condition est remplie.
+L'entité surveillée **n'est pas forcément celle de la jauge** : c'est ce qui permet, par exemple,
+de faire clignoter une jauge de batterie en fonction d'un `sensor.battery_power` séparé, sans
+passer par `config-template-card`.
+
+```yaml
+alarms:
+  - entity: sensor.battery_power   # optionnel — par défaut, l'entité de la jauge
+    condition: below
+    value: 0
+    effect: shadow_pulse
+    color: "#f44336"
+    duration: 900
+    intensity: 0.3
+```
+
+Plusieurs alarmes peuvent être actives simultanément, à condition d'utiliser des effets différents.
+
+| Option | Type | Défaut | Description |
+|--------|------|--------|-------------|
+| `entity` | string | entité de la jauge | Entité surveillée |
+| `attribute` | string | – | Lire cet attribut au lieu de l'état |
+| `condition` | string | `range` | Voir le tableau des conditions |
+| `min` / `max` | number | `min`/`max` de la jauge | Bornes pour `range` et `outside` |
+| `value` | number | 0 | Seuil pour `above`, `below`, `equal` |
+| `state` | string | `on` | Chaîne comparée pour `state` et `state_not` |
+| `effect` | string | `shadow_pulse` | Voir le tableau des effets |
+| `color` | string | couleur severity | Couleur de l'alarme — ignorée par `leds_blink` |
+| `duration` | number | 1000 | Durée d'un cycle complet en ms (minimum 100) |
+| `intensity` | number | 0.5 | Creux du cycle, 0 = flash complet, 1 = pulsation invisible |
+| `name` | string | – | Libellé affiché dans l'éditeur visuel uniquement |
+
+**Conditions**
+
+| `condition` | Se déclenche quand |
+|-------------|--------------------|
+| `range` | la valeur est comprise entre `min` et `max`, bornes incluses — défaut |
+| `outside` | la valeur est sous `min` ou au-dessus de `max` |
+| `above` | la valeur est strictement supérieure à `value` |
+| `below` | la valeur est strictement inférieure à `value` |
+| `equal` | la valeur est égale à `value` |
+| `state` | l'état est égal à `state` |
+| `state_not` | l'état est différent de `state` |
+| `unavailable` | l'entité est absente, `unavailable` ou `unknown` |
+
+Les conditions numériques ne se déclenchent jamais sur un état non numérique ou indisponible.
+
+**Effets**
+
+| `effect` | Résultat |
+|----------|----------|
+| `shadow_pulse` | L'ombre centrale pulse. Fonctionne aussi avec `center_shadow: false` — l'ombre n'apparaît alors que pendant l'alarme |
+| `leds_blink` | Les LEDs allumées clignotent en conservant leurs couleurs severity |
+| `value_blink` | La valeur centrale et l'unité clignotent, teintées avec `color` |
+| `border_pulse` | Un halo coloré pulse autour de toute la carte |
+
+Exemples :
+
+```yaml
+# Clignoter tant qu'un capteur de puissance séparé est en décharge
+alarms:
+  - entity: sensor.battery_power
+    condition: below
+    value: 0
+    effect: leds_blink
+    duration: 700
+
+# Mettre la carte en évidence tant qu'un détecteur de fuite est actif
+alarms:
+  - entity: binary_sensor.fuite_eau
+    condition: state
+    state: "on"
+    effect: border_pulse
+    color: "#f44336"
+
+# Deux alarmes sur une même carte : avertissement puis critique
+alarms:
+  - condition: range
+    min: 28
+    max: 32
+    effect: value_blink
+    color: "#ff9800"
+  - condition: above
+    value: 32
+    effect: shadow_pulse
+    color: "#f44336"
+    duration: 600
+    intensity: 0.15
+
+# Alerter quand le capteur ne remonte plus rien
+alarms:
+  - condition: unavailable
+    effect: value_blink
+    color: "#9e9e9e"
+    duration: 2000
+```
+
+**Migration depuis `center_shadow_pulse`**
+
+Les anciennes clés continuent de fonctionner : elles sont converties en une alarme unique, donc
+aucune configuration existante ne casse. `alarms:` a la priorité si les deux sont présentes, et
+modifier la section Alarmes dans l'éditeur visuel réécrit les anciennes clés au nouveau format.
+
+```yaml
+# Avant (toujours supporté)
+center_shadow_pulse: true
+center_shadow_pulse_min: 0
+center_shadow_pulse_max: 750
+center_shadow_pulse_duration: 1500
+center_shadow_pulse_intensity: 0.3
+
+# Après
+alarms:
+  - condition: range
+    min: 0
+    max: 750
+    effect: shadow_pulse
+    duration: 1500
+    intensity: 0.3
+```
 
 ### Transparence des Arrière-plans
 

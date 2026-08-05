@@ -1,7 +1,14 @@
 /**
- * Custom Gauge Card v2.0.0
+ * Custom Gauge Card v2.2.0
  * Home Assistant custom card — LED gauge with arc control, bidirectional mode,
  * scale ticks, 4 buttons and full shadow support.
+ *
+ * Changelog v2.2 vs v2.1:
+ *   - NEW  alarms: [] — multiple alarms, each watching any entity (not just the
+ *          gauge entity), with 8 condition types and 4 visual effects
+ *   - NEW  alarm effects: shadow_pulse, leds_blink, value_blink, border_pulse
+ *   - NEW  per-alarm color override
+ *   - KEEP center_shadow_pulse* still works — silently migrated to alarms[0]
  *
  * Changelog v2.0 vs v1.0.5:
  *   - NEW  arc_sweep (30–360°) + arc_start — full YAML control
@@ -17,7 +24,7 @@
 !function () {
   "use strict";
 
-  const CARD_VERSION = '2.1.0';
+  const CARD_VERSION = '2.2.0';
 
   // ── Themes ──────────────────────────────────────────────────────────────────
   const THEMES = {
@@ -54,6 +61,14 @@
 .switch-button.top-right{top:30px;right:30px}
 .switch-button.bottom-left{bottom:40px;left:30px}
 .switch-button.bottom-right{bottom:40px;right:30px}
+@keyframes cgc-alarm-blink{0%,100%{opacity:1}50%{opacity:var(--cgc-blink-min,.25)}}
+@keyframes cgc-alarm-border{0%,100%{box-shadow:0 0 6px 0 var(--alarm-border-color,#f44336)}50%{box-shadow:0 0 24px 7px var(--alarm-border-color,#f44336)}}
+.gauge-card.alarm-leds .led.active{--cgc-blink-min:var(--alarm-leds-opacity,.25);animation:cgc-alarm-blink var(--alarm-leds-duration,1s) ease-in-out infinite}
+.gauge-card.alarm-value .value,.gauge-card.alarm-value .unit{--cgc-blink-min:var(--alarm-value-opacity,.25);animation:cgc-alarm-blink var(--alarm-value-duration,1s) ease-in-out infinite}
+.gauge-card.alarm-value .value{color:var(--alarm-value-color,var(--value-font-color))}
+.gauge-card.alarm-value .unit{color:var(--alarm-value-color,var(--unit-font-color))}
+.gauge-card.alarm-border{animation:cgc-alarm-border var(--alarm-border-duration,1s) ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.gauge-card.alarm-leds .led.active,.gauge-card.alarm-value .value,.gauge-card.alarm-value .unit,.gauge-card.alarm-border{animation-duration:2.5s}}
 `;
 
   // ── Utilities ────────────────────────────────────────────────────────────────
@@ -80,11 +95,18 @@
     return '#555';
   }
 
+  /**
+   * #rrggbb / #rgb → rgba(). Any other notation (named color, rgb(), var(...))
+   * is returned untouched: the pulsation then varies blur/spread only.
+   */
   function hexToRgba(hex, alpha) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    if (isNaN(r) || isNaN(g) || isNaN(b)) return hex;
+    if (typeof hex !== 'string') return hex;
+    let h = hex.trim();
+    if (h.length === 4 && h[0] === '#') h = `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3]}${h[3]}`;
+    if (!/^#[0-9a-fA-F]{6}$/.test(h)) return hex;
+    const r = parseInt(h.slice(1, 3), 16);
+    const g = parseInt(h.slice(3, 5), 16);
+    const b = parseInt(h.slice(5, 7), 16);
     return `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
   }
 
@@ -134,6 +156,129 @@
       const frac = lowerRange > 0 ? (refPoint - value) / lowerRange : 0;
       return refAngle - frac * arcSweep * zeroFrac;
     }
+  }
+
+  // ── Alarms ───────────────────────────────────────────────────────────────────
+
+  const ALARM_CONDITIONS = ['range', 'outside', 'above', 'below', 'equal', 'state', 'state_not', 'unavailable'];
+  const ALARM_EFFECTS    = ['shadow_pulse', 'leds_blink', 'value_blink', 'border_pulse'];
+
+  // CSS-driven effects: class toggled on .gauge-card, parameters passed as CSS vars.
+  // shadow_pulse is absent here — it is driven in JS because it follows the live
+  // severity color of the gauge when no explicit alarm color is set.
+  const ALARM_CSS_EFFECTS = {
+    leds_blink:   { cls: 'alarm-leds',   ns: 'leds'   },
+    value_blink:  { cls: 'alarm-value',  ns: 'value'  },
+    border_pulse: { cls: 'alarm-border', ns: 'border' },
+  };
+
+  const LEGACY_PULSE_KEYS = [
+    'center_shadow_pulse', 'center_shadow_pulse_min', 'center_shadow_pulse_max',
+    'center_shadow_pulse_duration', 'center_shadow_pulse_intensity',
+  ];
+
+  function normalizeAlarm(a, config) {
+    const num = (v, fallback) => (v !== undefined && v !== null && v !== '' && !isNaN(Number(v)) ? Number(v) : fallback);
+    return {
+      name:      a.name || null,
+      entity:    a.entity || null,                 // null → the gauge entity
+      attribute: a.attribute || null,
+      condition: ALARM_CONDITIONS.includes(a.condition) ? a.condition : 'range',
+      min:       num(a.min, num(config.min, 0)),
+      max:       num(a.max, num(config.max, 100)),
+      value:     num(a.value, 0),
+      state:     a.state !== undefined && a.state !== null ? String(a.state) : 'on',
+      effect:    ALARM_EFFECTS.includes(a.effect) ? a.effect : 'shadow_pulse',
+      color:     a.color || null,                  // null → severity color of the gauge
+      duration:  Math.max(100, num(a.duration, 1000)),
+      intensity: Math.max(0, Math.min(1, num(a.intensity, 0.5))),
+    };
+  }
+
+  /** Legacy center_shadow_pulse_* → a single alarm. Returns null when disabled. */
+  function legacyPulseAlarm(config) {
+    if (!config.center_shadow_pulse) return null;
+    return {
+      condition: 'range',
+      min:       config.center_shadow_pulse_min,
+      max:       config.center_shadow_pulse_max,
+      effect:    'shadow_pulse',
+      duration:  config.center_shadow_pulse_duration,
+      intensity: config.center_shadow_pulse_intensity,
+    };
+  }
+
+  /** alarms: [] wins over the legacy keys; both are supported. */
+  function buildAlarms(config) {
+    if (Array.isArray(config.alarms)) {
+      return config.alarms
+        .filter(a => a && typeof a === 'object')
+        .map(a => normalizeAlarm(a, config));
+    }
+    const legacy = legacyPulseAlarm(config);
+    return legacy ? [normalizeAlarm(legacy, config)] : [];
+  }
+
+  function isAlarmActive(ctx, alarm) {
+    const hass = ctx._hass;
+    if (!hass) return false;
+    const entityId = alarm.entity || ctx.config.entity;
+    const st = hass.states[entityId];
+    if (!st) return alarm.condition === 'unavailable';
+
+    const raw = alarm.attribute ? st.attributes[alarm.attribute] : st.state;
+    const unavailable = raw === undefined || raw === null || raw === 'unavailable' || raw === 'unknown';
+
+    switch (alarm.condition) {
+      case 'unavailable': return unavailable;
+      case 'state':       return String(raw) === alarm.state;
+      case 'state_not':   return String(raw) !== alarm.state;
+    }
+    if (unavailable) return false;
+
+    const v = parseFloat(raw);
+    if (isNaN(v)) return false;
+    switch (alarm.condition) {
+      case 'above':   return v >  alarm.value;
+      case 'below':   return v <  alarm.value;
+      case 'equal':   return v === alarm.value;
+      case 'outside': return v <  alarm.min || v > alarm.max;
+      default:        return v >= alarm.min && v <= alarm.max;   // range
+    }
+  }
+
+  /**
+   * Re-evaluate every alarm and apply the matching effects.
+   * Called on every hass update — including when the gauge entity itself did not
+   * change — so an alarm can watch any other entity.
+   */
+  function evaluateAlarms(ctx) {
+    if (!ctx.shadowRoot || !ctx._hass) return;
+    const card = ctx.shadowRoot.getElementById('gauge-container');
+    if (!card) return;
+
+    const alarms = ctx.config.alarms || [];
+    const active = alarms.filter(a => isAlarmActive(ctx, a));
+    ctx.activeAlarms = active;
+
+    for (const [effect, { cls, ns }] of Object.entries(ALARM_CSS_EFFECTS)) {
+      const a = active.find(x => x.effect === effect);
+      card.classList.toggle(cls, !!a);
+      if (!a) continue;
+      card.style.setProperty(`--alarm-${ns}-duration`, `${a.duration}ms`);
+      card.style.setProperty(`--alarm-${ns}-opacity`,  String(a.intensity));
+      if (a.color) card.style.setProperty(`--alarm-${ns}-color`, a.color);
+      else         card.style.removeProperty(`--alarm-${ns}-color`);
+    }
+
+    updateShadowPulse(ctx, active.find(a => a.effect === 'shadow_pulse') || null);
+  }
+
+  function clearAlarmEffects(ctx) {
+    const card = ctx.shadowRoot?.getElementById('gauge-container');
+    if (card) Object.values(ALARM_CSS_EFFECTS).forEach(({ cls }) => card.classList.remove(cls));
+    ctx.activeAlarms = [];
+    updateShadowPulse(ctx, null);
   }
 
   // ── Config ───────────────────────────────────────────────────────────────────
@@ -193,6 +338,9 @@
     if (config.show_switch_button && config.switch_entity && c.buttons.length === 0) {
       c.buttons = [{ entity: config.switch_entity, position: config.switch_button_position || 'bottom-right', icon: null }];
     }
+    // v2.2: alarms — normalized here so the render path never sees raw user input.
+    // Built from `c` (not `config`) so the legacy pulse keys are already defaulted.
+    c.alarms = buildAlarms(c);
     return c;
   }
 
@@ -242,35 +390,63 @@
     ctx.intersectionObserver = new IntersectionObserver(entries => {
       entries.forEach(e => {
         ctx.isVisible = e.isIntersecting;
-        if (ctx.isVisible && ctx._hass && ctx._updateGauge) ctx._updateGauge();
+        if (ctx.isVisible) {
+          if (ctx._hass && ctx._updateGauge) ctx._updateGauge();
+          if (ctx._evaluateAlarms) ctx._evaluateAlarms();
+        } else {
+          // Off-screen: drop the animations too, that is the point of power save.
+          clearAlarmEffects(ctx);
+        }
       });
     }, { root: null, rootMargin: '0px', threshold: ctx.config.power_save_threshold / 100 });
     ctx.intersectionObserver.observe(ctx);
   }
 
-  function startCenterShadowPulsation(ctx, value, min, max) {
-    if (!ctx.config.center_shadow_pulse) return;
-    const inZone = value >= ctx.config.center_shadow_pulse_min && value <= ctx.config.center_shadow_pulse_max;
-    if (inZone && !ctx.pulsationInterval) {
-      const dur        = ctx.config.center_shadow_pulse_duration || 1000;
-      const intensity  = ctx.config.center_shadow_pulse_intensity;
-      const baseBlur   = ctx.config.center_shadow_blur   || 30;
-      const baseSpread = ctx.config.center_shadow_spread || 15;
-      const t0         = Date.now();
-      ctx.pulsationInterval = setInterval(() => {
-        const wave = Math.sin(((Date.now() - t0) % dur) / dur * Math.PI * 2) * 0.5 + 0.5;
-        const mult = intensity + (1 - intensity) * wave;
-        const cs   = ctx.shadowRoot?.getElementById('center-shadow');
-        if (cs && ctx.currentShadowColor) {
-          const c = hexToRgba(ctx.currentShadowColor, mult);
-          cs.style.boxShadow = `0 0 ${(baseBlur * mult).toFixed(1)}px ${(baseSpread * mult).toFixed(1)}px ${c}`;
-        }
-      }, 16);
-    } else if (!inZone && ctx.pulsationInterval) {
-      clearInterval(ctx.pulsationInterval);
-      ctx.pulsationInterval = null;
-      if (ctx._updateCenterShadow) ctx._updateCenterShadow(((value - min) / (max - min)) * 100, value, min, max);
+  /**
+   * Start/stop/retune the center-shadow pulsation from an alarm (or null to stop).
+   * The interval is only restarted when the pulse parameters actually change, so a
+   * hass update every second does not reset the wave.
+   */
+  function updateShadowPulse(ctx, alarm) {
+    const sig = alarm ? `${alarm.duration}|${alarm.intensity}|${alarm.color || ''}` : null;
+    if (sig === ctx.pulsationSig) return;
+    ctx.pulsationSig = sig;
+    stopCenterShadowPulsation(ctx);
+    if (alarm) { startCenterShadowPulsation(ctx, alarm); return; }
+    // Back to the static shadow — or none at all when center_shadow is off.
+    const cs = ctx.shadowRoot?.getElementById('center-shadow');
+    if (!cs) return;
+    cs.style.transition = '';
+    if (ctx.config.center_shadow && ctx.currentShadowColor) {
+      const blur   = ctx.config.center_shadow_blur   || 30;
+      const spread = ctx.config.center_shadow_spread || 15;
+      cs.style.boxShadow = `0 0 ${blur}px ${spread}px ${ctx.currentShadowColor}`;
+    } else {
+      cs.style.boxShadow = 'none';
     }
+  }
+
+  function startCenterShadowPulsation(ctx, alarm) {
+    const dur        = alarm.duration;
+    const intensity  = alarm.intensity;
+    const baseBlur   = ctx.config.center_shadow_blur   || 30;
+    const baseSpread = ctx.config.center_shadow_spread || 15;
+    const t0         = Date.now();
+    // The .center-shadow CSS transition (300 ms) would lag behind a 16 ms tick and
+    // never let the shadow reach its target color — the wave is the animation here.
+    const csEl = ctx.shadowRoot?.getElementById('center-shadow');
+    if (csEl) csEl.style.transition = 'none';
+    ctx.pulsationInterval = setInterval(() => {
+      const wave  = Math.sin(((Date.now() - t0) % dur) / dur * Math.PI * 2) * 0.5 + 0.5;
+      const mult  = intensity + (1 - intensity) * wave;
+      const cs    = ctx.shadowRoot?.getElementById('center-shadow');
+      // Falls back to the live severity color, re-read each tick so the pulse
+      // follows the gauge color when no explicit alarm color is configured.
+      const color = alarm.color || ctx.currentShadowColor;
+      if (cs && color) {
+        cs.style.boxShadow = `0 0 ${(baseBlur * mult).toFixed(1)}px ${(baseSpread * mult).toFixed(1)}px ${hexToRgba(color, mult)}`;
+      }
+    }, 16);
   }
 
   function stopCenterShadowPulsation(ctx) {
@@ -420,7 +596,7 @@
     const csBlur   = config.center_shadow_blur   || 30;
     const csSpread = config.center_shadow_spread  || 15;
     const csColor  = (Array.isArray(config.severity) && config.severity[0]?.color) || '#4caf50';
-    const csPreview = (config.center_shadow || config.center_shadow_pulse)
+    const csPreview = config.center_shadow
       ? `0 0 ${csBlur}px ${csSpread}px ${csColor}`
       : 'none';
     return `
@@ -656,8 +832,10 @@
 
   function updateCenterShadow(ctx, value, realValue, min, max) {
     const cs = ctx.shadowRoot.getElementById('center-shadow');
-    if (!ctx.config.center_shadow && !ctx.config.center_shadow_pulse) {
-      stopCenterShadowPulsation(ctx);
+    // The shadow is also needed when an alarm pulses it, even with center_shadow off.
+    const pulsable = (ctx.config.alarms || []).some(a => a.effect === 'shadow_pulse');
+    if (!ctx.config.center_shadow && !pulsable) {
+      updateShadowPulse(ctx, null);
       if (cs) cs.style.boxShadow = 'none';
       return;
     }
@@ -665,9 +843,9 @@
     const blur   = ctx.config.center_shadow_blur   || 30;
     const spread = ctx.config.center_shadow_spread || 15;
     ctx.currentShadowColor = color;
-    if (cs && !ctx.pulsationInterval) cs.style.boxShadow = `0 0 ${blur}px ${spread}px ${color}`;
-    if (ctx.config.center_shadow_pulse && realValue !== undefined) {
-      startCenterShadowPulsation(ctx, realValue, min, max);
+    // While pulsing, the pulsation interval owns the box-shadow.
+    if (cs && !ctx.pulsationInterval) {
+      cs.style.boxShadow = ctx.config.center_shadow ? `0 0 ${blur}px ${spread}px ${color}` : 'none';
     }
   }
 
@@ -743,7 +921,9 @@
       // Only rebuild when a key that controls section visibility changes.
       // Compare against _builtConfig (snapshot at last _build), not _config,
       // because _change() updates _config immediately before HA calls setConfig.
-      const STRUCTURAL = ['theme', 'center_shadow', 'center_shadow_pulse', 'entity'];
+      // `alarms` is deliberately absent: the alarms editor redraws itself, a full
+      // rebuild on every keystroke would steal focus.
+      const STRUCTURAL = ['theme', 'center_shadow', 'entity'];
       if (STRUCTURAL.some(k => (this._builtConfig || {})[k] !== config[k])) this._build();
     }
 
@@ -902,6 +1082,221 @@
       return wrap;
     }
 
+    /**
+     * Write the alarms list to the config and drop the legacy pulse keys so a
+     * migrated card never carries two sources of truth.
+     */
+    _commitAlarms(alarms) {
+      const cfg = { ...this._config, alarms: alarms.map(a => ({ ...a })) };
+      LEGACY_PULSE_KEYS.forEach(k => delete cfg[k]);
+      this._config = cfg;
+      this.dispatchEvent(new CustomEvent('config-changed', {
+        detail: { config: cfg }, bubbles: true, composed: true,
+      }));
+    }
+
+    /**
+     * ha-selector bound to one key of one alarm.
+     * No data-key attribute: the `set hass` re-sync loop only re-syncs top-level
+     * config keys and would otherwise overwrite this value with the whole array.
+     */
+    _alarmSel(alarms, idx, key, selector, label, defaultVal, onChange) {
+      const wrap = document.createElement('div');
+      wrap.className = 'field';
+      if (label) {
+        const lbl = document.createElement('label');
+        lbl.className = 'field-label';
+        lbl.textContent = label;
+        wrap.appendChild(lbl);
+      }
+      const el = document.createElement('ha-selector');
+      el.setAttribute('data-sel', '');
+      el.selector = selector;
+      const cur = alarms[idx][key];
+      el.value = cur !== undefined && cur !== null ? cur : (defaultVal !== undefined ? defaultVal : '');
+      if (this._hass) el.hass = this._hass;
+      el.addEventListener('value-changed', e => {
+        e.stopPropagation();
+        const v = e.detail.value;
+        alarms[idx][key] = (v === '' || v === undefined) ? null : v;
+        this._commitAlarms(alarms);
+        if (onChange) onChange();
+      });
+      wrap.appendChild(el);
+      return wrap;
+    }
+
+    _alarmColorField(alarms, idx) {
+      const wrap = document.createElement('div');
+      wrap.className = 'field';
+      const lbl = document.createElement('label');
+      lbl.className = 'field-label';
+      lbl.textContent = 'Color';
+      wrap.appendChild(lbl);
+
+      const row = document.createElement('div');
+      row.className = 'color-field-row';
+      const cur   = alarms[idx].color || '';
+      const isHex = /^#[0-9a-fA-F]{6}$/.test(cur);
+
+      const picker = document.createElement('input');
+      picker.type = 'color';
+      picker.value = isHex ? cur : '#f44336';
+      picker.className = 'color-field-picker';
+      picker.title = 'Choose an alarm color';
+
+      const valTxt = document.createElement('span');
+      valTxt.className = 'color-field-val';
+      valTxt.textContent = cur || '(gauge color)';
+
+      const clearBtn = document.createElement('button');
+      clearBtn.textContent = '✕';
+      clearBtn.className = 'color-field-clear';
+      clearBtn.title = 'Reset (follow the gauge severity color)';
+      clearBtn.style.visibility = cur ? 'visible' : 'hidden';
+
+      picker.addEventListener('input', e => {
+        valTxt.textContent = e.target.value;
+        clearBtn.style.visibility = 'visible';
+        alarms[idx].color = e.target.value;
+        this._commitAlarms(alarms);
+      });
+      clearBtn.addEventListener('click', () => {
+        picker.value = '#f44336';
+        valTxt.textContent = '(gauge color)';
+        clearBtn.style.visibility = 'hidden';
+        alarms[idx].color = null;
+        this._commitAlarms(alarms);
+      });
+
+      row.append(picker, valTxt, clearBtn);
+      wrap.appendChild(row);
+      return wrap;
+    }
+
+    _buildAlarmsEditor() {
+      const wrap = document.createElement('div');
+      wrap.className = 'alarms-editor';
+
+      // Seed from `alarms`, falling back to the legacy center_shadow_pulse_* keys
+      // so an existing card opens in the editor with its alarm already listed.
+      let alarms;
+      if (Array.isArray(this._config.alarms)) {
+        alarms = this._config.alarms.map(a => ({ ...a }));
+      } else {
+        const legacy = legacyPulseAlarm(this._config);
+        alarms = legacy ? [legacy] : [];
+      }
+
+      const CONDITIONS = [
+        { value: 'range',       label: 'Value between min and max' },
+        { value: 'outside',     label: 'Value outside min…max' },
+        { value: 'above',       label: 'Value above' },
+        { value: 'below',       label: 'Value below' },
+        { value: 'equal',       label: 'Value equals' },
+        { value: 'state',       label: 'State is' },
+        { value: 'state_not',   label: 'State is not' },
+        { value: 'unavailable', label: 'Entity unavailable' },
+      ];
+      const EFFECTS = [
+        { value: 'shadow_pulse', label: 'Pulsating center shadow' },
+        { value: 'leds_blink',   label: 'Blinking LEDs' },
+        { value: 'value_blink',  label: 'Blinking value' },
+        { value: 'border_pulse', label: 'Pulsating card border' },
+      ];
+
+      const redraw = () => {
+        wrap.innerHTML = '';
+
+        alarms.forEach((alarm, idx) => {
+          const box = document.createElement('div');
+          box.className = 'alarm-box';
+
+          const head = document.createElement('div');
+          head.className = 'alarm-head';
+          const title = document.createElement('span');
+          title.textContent = alarm.name || `Alarm ${idx + 1}`;
+          const delBtn = document.createElement('button');
+          delBtn.textContent = '✕';
+          delBtn.className = 'alarm-del';
+          delBtn.title = 'Delete this alarm';
+          delBtn.addEventListener('click', () => {
+            alarms.splice(idx, 1);
+            this._commitAlarms(alarms);
+            redraw();
+          });
+          head.append(title, delBtn);
+          box.appendChild(head);
+
+          // redraw: picking an entity reveals its attribute selector
+          box.appendChild(this._alarmSel(alarms, idx, 'entity', { entity: {} },
+            'Watched entity (empty = gauge entity)', undefined, redraw));
+
+          if (alarm.entity) {
+            box.appendChild(this._alarmSel(alarms, idx, 'attribute',
+              { attribute: { entity_id: alarm.entity } }, 'Attribute (optional)'));
+          }
+
+          box.appendChild(this._row(2,
+            this._alarmSel(alarms, idx, 'condition', { select: { options: CONDITIONS, mode: 'dropdown' } },
+              'Condition', 'range', redraw),
+            this._alarmSel(alarms, idx, 'effect', { select: { options: EFFECTS, mode: 'dropdown' } },
+              'Effect', 'shadow_pulse', redraw),
+          ));
+
+          const cond = alarm.condition || 'range';
+          if (cond === 'range' || cond === 'outside') {
+            box.appendChild(this._row(2,
+              this._alarmSel(alarms, idx, 'min', { number: { mode: 'box', step: 'any' } }, 'Min value'),
+              this._alarmSel(alarms, idx, 'max', { number: { mode: 'box', step: 'any' } }, 'Max value'),
+            ));
+          } else if (cond === 'above' || cond === 'below' || cond === 'equal') {
+            box.appendChild(this._alarmSel(alarms, idx, 'value',
+              { number: { mode: 'box', step: 'any' } }, 'Threshold value'));
+          } else if (cond === 'state' || cond === 'state_not') {
+            box.appendChild(this._alarmSel(alarms, idx, 'state', { text: {} }, 'State (e.g. on, off, charging)', 'on'));
+          }
+
+          box.appendChild(this._row(2,
+            this._alarmSel(alarms, idx, 'duration',
+              { number: { min: 200, max: 5000, step: 100, mode: 'box', unit_of_measurement: 'ms' } }, 'Cycle duration', 1000),
+            this._alarmSel(alarms, idx, 'intensity',
+              { number: { min: 0, max: 1, step: 0.05, mode: 'slider' } }, 'Min intensity (0 = full flash)', 0.5),
+          ));
+
+          if (alarm.effect === 'leds_blink') {
+            box.appendChild(this._info('Blinking LEDs keep their severity colors — the color below is ignored for this effect.'));
+          }
+          box.appendChild(this._alarmColorField(alarms, idx));
+          box.appendChild(this._alarmSel(alarms, idx, 'name', { text: {} }, 'Label (optional, editor only)'));
+
+          wrap.appendChild(box);
+        });
+
+        if (!alarms.length) {
+          wrap.appendChild(this._info('No alarm configured. An alarm watches any entity and applies a visual effect while its condition is met.'));
+        }
+
+        const addBtn = document.createElement('button');
+        addBtn.textContent = '+ Add alarm';
+        addBtn.className = 'alarm-add';
+        addBtn.addEventListener('click', () => {
+          alarms.push({
+            entity: null, condition: 'range',
+            min: this._config.min !== undefined ? this._config.min : 0,
+            max: this._config.max !== undefined ? this._config.max : 100,
+            effect: 'shadow_pulse', duration: 1000, intensity: 0.5,
+          });
+          this._commitAlarms(alarms);
+          redraw();
+        });
+        wrap.appendChild(addBtn);
+      };
+
+      redraw();
+      return wrap;
+    }
+
     _buildSeverityEditor() {
       const wrap = document.createElement('div');
       wrap.className = 'severity-editor';
@@ -1018,12 +1413,18 @@
         .sev-val { height: 34px; padding: 0 10px; border: 1px solid var(--divider-color); border-radius: 6px;
                    background: var(--card-background-color, #fff); color: var(--primary-text-color);
                    font-size: 14px; width: 100%; box-sizing: border-box; }
-        .sev-del { width: 32px; height: 32px; border-radius: 50%; border: none;
+        .sev-del, .alarm-del { width: 32px; height: 32px; border-radius: 50%; border: none;
                    background: var(--error-color, #f44336); color: white;
                    cursor: pointer; font-size: 14px; line-height: 1; }
-        .sev-add { margin-top: 4px; padding: 7px 12px; border: 1px dashed var(--primary-color);
+        .sev-add, .alarm-add { margin-top: 4px; padding: 7px 12px; border: 1px dashed var(--primary-color);
                    border-radius: 6px; background: none; color: var(--primary-color);
                    cursor: pointer; font-size: 13px; width: 100%; }
+        .alarms-editor { display: flex; flex-direction: column; gap: 10px; }
+        .alarm-box { display: flex; flex-direction: column; gap: 10px; padding: 12px;
+                     border: 1px solid var(--divider-color); border-radius: 8px; }
+        .alarm-head { display: flex; align-items: center; justify-content: space-between;
+                      font-size: 11px; font-weight: 700; color: var(--primary-color);
+                      text-transform: uppercase; letter-spacing: 0.6px; }
         .color-field-row { display: flex; align-items: center; gap: 8px; }
         .color-field-picker { width: 44px; height: 34px; padding: 2px 3px; border: 1px solid var(--divider-color);
                               border-radius: 6px; cursor: pointer; background: none; flex-shrink: 0; }
@@ -1164,23 +1565,11 @@
         this._buildSeverityEditor(),
       ));
 
-      // ── Pulsating alarm ──────────────────────────────────────────────────────
-      const alarmChildren = [];
-      if (!cfg.center_shadow) {
-        alarmChildren.push(this._info('⚠️ Enable "Center shadow" in Visual effects to use the pulsating alarm.'));
-      }
-      alarmChildren.push(this._sel('center_shadow_pulse', { boolean: {} }, 'Enable pulsating alarm', false));
-      if (cfg.center_shadow_pulse) {
-        alarmChildren.push(
-          this._row(3,
-            this._sel('center_shadow_pulse_min', { number: { mode: 'box', step: 'any' } }, 'Min trigger value'),
-            this._sel('center_shadow_pulse_max', { number: { mode: 'box', step: 'any' } }, 'Max trigger value'),
-            this._sel('center_shadow_pulse_duration', { number: { min: 200, max: 5000, step: 100, mode: 'box', unit_of_measurement: 'ms' } }, 'Cycle duration', 1000),
-          ),
-          this._sel('center_shadow_pulse_intensity', { number: { min: 0, max: 1, step: 0.05, mode: 'slider' } }, 'Minimum intensity (0 = full flash, 1 = no pulse)', 0.5),
-        );
-      }
-      root.appendChild(this._section('Pulsating alarm', ...alarmChildren));
+      // ── Alarms ───────────────────────────────────────────────────────────────
+      root.appendChild(this._section('Alarms',
+        this._info('Each alarm watches an entity — the gauge one by default, or any other — and applies a visual effect while its condition is met.'),
+        this._buildAlarmsEditor(),
+      ));
 
       // ── Scale ticks ──────────────────────────────────────────────────────────
       root.appendChild(this._section('Scale ticks',
@@ -1280,6 +1669,8 @@
       this.isVisible           = true;
       this.animationInterval   = null;
       this.pulsationInterval   = null;
+      this.pulsationSig        = null;
+      this.activeAlarms        = [];
       this.buttonsInitialized  = false;
       this.trendInitialized    = false;
 
@@ -1291,6 +1682,7 @@
       this._updateCenterShadow = updateCenterShadow.bind(null, this);
       this._updateButtonsState = updateButtonsState.bind(null, this);
       this._createButtons      = createButtons.bind(null, this);
+      this._evaluateAlarms     = evaluateAlarms.bind(null, this);
 
       this.shadowRoot
         .getElementById('gauge-container')
@@ -1315,6 +1707,7 @@
         this.trendInitialized = true;
         updateDynamicMarkers(this, this._hass);
         this._updateGauge();
+        this._evaluateAlarms();
       }
     }
 
@@ -1343,6 +1736,10 @@
       } else {
         this._updateGauge();
       }
+
+      // Alarms are never debounced: they may watch an entity other than the gauge
+      // one, and a delayed alert is a broken alert.
+      this._evaluateAlarms();
     }
 
     getCardSize() { return 4; }
@@ -1351,6 +1748,7 @@
       if (this.updateTimer)       { clearTimeout(this.updateTimer);       this.updateTimer = null; }
       if (this.animationInterval) { clearInterval(this.animationInterval); this.animationInterval = null; }
       stopCenterShadowPulsation(this);
+      this.pulsationSig = null;
       if (this.intersectionObserver) { this.intersectionObserver.disconnect(); this.intersectionObserver = null; }
     }
   }
