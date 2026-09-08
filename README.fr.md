@@ -37,7 +37,7 @@ Une carte personnalisée pour Home Assistant qui affiche vos capteurs sous forme
  **Contrôle Multi-Boutons**
 - Contrôlez plusieurs entités directement depuis la jauge
 - Support des interrupteurs, lumières, scènes, scripts, automatisations et plus
-- Jusqu'à 4 boutons avec positions personnalisables
+- Jusqu'à 4 boutons MDI dans une barre sous le titre
 - Icônes intelligentes et retour visuel d'état
 
  **Performances Optimisées**
@@ -183,14 +183,11 @@ severity:
 button_icon_size: 22  # Taille par défaut de l'icône pour tous les boutons (en pixels)
 buttons:
   - entity: switch.pompe_1
-    position: bottom-right
-    icon: "●"  # Optionnel, défaut selon le type d'entité
+    icon: "mdi:water-pump"  # Optionnel, défaut selon le type d'entité
     icon_size: 28  # Optionnel : taille personnalisée pour ce bouton
   - entity: light.led_cuve
-    position: top-right
   - entity: script.remplir_cuve
-    position: bottom-left
-    icon: "▶"
+    icon: "mdi:play"
     icon_size: 20  # Optionnel : taille personnalisée pour ce bouton
 
 # Optimisations
@@ -497,11 +494,15 @@ hide_inactive_leds: true
 
 ### Contrôle Multi-Boutons
 
-Configurez plusieurs boutons pour contrôler diverses entités:
+Configurez jusqu'à 4 boutons pour contrôler diverses entités. Depuis la v2.3, ils
+sont disposés dans une **barre centrée sous le titre**, au-dessus d'un filet fin
+dérivé du thème. Sans aucun bouton configuré, ni la barre ni le filet ne sont
+dessinés et aucun espace n'est réservé.
 
 | Option | Type | Défaut | Description |
 |--------|------|--------|-------------|
 | `button_icon_size` | number | 22 | Taille par défaut de l'icône pour tous les boutons (en pixels) |
+| `buttons_layout` | string | `bar` | `bar` (sous le titre) ou `corners` (placement d'avant la 2.3, respecte le `position` de chaque bouton) |
 
 **Propriétés des Boutons:**
 
@@ -509,35 +510,36 @@ Configurez plusieurs boutons pour contrôler diverses entités:
 button_icon_size: 22  # Taille globale par défaut pour tous les boutons
 buttons:
   - entity: switch.mon_interrupteur
-    position: bottom-right  # top-left, top-right, bottom-left, bottom-right
-    icon: "●"  # Optionnel, défaut selon le type d'entité
+    icon: "mdi:toggle-switch"  # Optionnel, défaut selon le type d'entité
     icon_size: 28  # Optionnel : taille personnalisée pour ce bouton (remplace button_icon_size)
 ```
 
 | Propriété du Bouton | Type | Défaut | Description |
 |----------------------|------|--------|-------------|
 | `entity` | string | *requis* | ID de l'entité à contrôler |
-| `position` | string | `bottom-right` | Position du bouton (top-left, top-right, bottom-left, bottom-right) |
-| `icon` | string | *auto* | Icône/emoji personnalisé (par défaut selon le type d'entité) |
+| `icon` | string | *auto* | Icône personnalisée (par défaut selon le type d'entité) |
 | `icon_size` | number | `button_icon_size` | Taille personnalisée de l'icône pour ce bouton |
+| `position` | string | `bottom-right` | **Uniquement avec `buttons_layout: corners`** (top-left, top-right, bottom-left, bottom-right). Ignoré en disposition `bar` |
 
 **Personnalisation des icônes :**
-- Vous pouvez utiliser **n'importe quel emoji** (💡, 🎬, ●, 🔥, ⚡, 🌙, ⭐, 🎵, 🌡️, 💧, etc.)
-- Vous pouvez utiliser **n'importe quel texte ou symbole** (●, ▶, ■, ★, ON, OFF, etc.)
+- Recommandé : **n'importe quelle icône MDI**, écrite `mdi:nom` (`mdi:water-pump`, `mdi:fan`, ...). Elle est rendue via le `<ha-icon>` de Home Assistant : elle hérite de la couleur du bouton et reste nette à toute taille. Dans l'éditeur visuel, vous disposez du sélecteur d'icônes natif de HA, avec recherche
+- Toujours supporté : **n'importe quel emoji** (💡, 🎬, ●, 🔥, ⚡, 🌙, ⭐, 🎵, 🌡️, 💧, etc.)
+- Toujours supporté : **n'importe quel texte ou symbole** (●, ▶, ■, ★, ON, OFF, etc.)
 
+Tout ce qui n'est pas de la forme `prefixe:nom` est inséré tel quel, exactement comme avant la v2.3.
 
-**Types d'Entités Supportés:**
-- `switch` - Basculer on/off (●)
-- `light` - Basculer lumière on/off (💡)
-- `scene` - Activer scène (🎬)
-- `script` - Exécuter script (▶)
-- `input_boolean` - Basculer booléen (●)
-- `automation` - Basculer automatisation (🤖)
-- `fan` - Basculer ventilateur (🌀)
-- `cover` - Ouvrir/fermer couverture (🪟)
-- `climate` - Basculer climatisation (🌡️)
-- `lock` - Verrouiller/déverrouiller (🔒)
-- `vacuum` - Démarrer/arrêter aspirateur (🤖)
+**Types d'Entités Supportés** (et leur icône MDI par défaut) :
+- `switch` - Basculer on/off (`mdi:toggle-switch`)
+- `light` - Basculer lumière on/off (`mdi:lightbulb`)
+- `scene` - Activer scène (`mdi:palette`)
+- `script` - Exécuter script (`mdi:play`)
+- `input_boolean` - Basculer booléen (`mdi:toggle-switch-outline`)
+- `automation` - Basculer automatisation (`mdi:robot`)
+- `fan` - Basculer ventilateur (`mdi:fan`)
+- `cover` - Ouvrir/fermer couverture (`mdi:window-shutter`)
+- `climate` - Basculer climatisation (`mdi:thermostat`)
+- `lock` - Verrouiller/déverrouiller (`mdi:lock`)
+- `vacuum` - Démarrer/arrêter aspirateur (`mdi:robot-vacuum`)
 
 **Note:** L'ancien format de configuration (`show_switch_button`, `switch_entity`, `switch_button_position`) est toujours supporté pour la rétrocompatibilité.
 
@@ -621,11 +623,8 @@ animation_duration: 600
 # Ajout de boutons de contrôle multiples
 buttons:
   - entity: switch.alimentation_principale
-    position: bottom-right
   - entity: light.indicateur_puissance
-    position: top-right
   - entity: script.reset_compteur
-    position: bottom-left
     icon: "🔄"
 markers:
   - value: 2000
@@ -645,16 +644,13 @@ max: 30
 # Contrôler plusieurs appareils depuis une jauge
 buttons:
   - entity: light.salon
-    position: top-left
-    icon: "💡"
+    icon: "mdi:lightbulb"
   - entity: switch.climatisation
-    position: top-right
-    icon: "❄️"
+    icon: "mdi:snowflake"
   - entity: scene.mode_cinema
-    position: bottom-left
-    icon: "🎬"
+    icon: "mdi:movie-open"
   - entity: automation.routine_nuit
-    position: bottom-right
+    icon: "mdi:weather-night"
     icon: "🌙"
 severity:
   - color: "#00bfff"

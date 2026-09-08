@@ -86,7 +86,7 @@ A custom card for Home Assistant that displays your sensors as an animated and i
  **Multi-Button Control**
 - Control multiple entities directly from the gauge
 - Support for switches, lights, scenes, scripts, automations and more
-- Up to 4 buttons with customizable positions
+- Up to 4 MDI buttons in a bar under the title
 - Smart icons and visual feedback
 
  **Optimized Performance**
@@ -266,14 +266,11 @@ severity:
 button_icon_size: 22  # Default icon size for all buttons (in pixels)
 buttons:
   - entity: switch.pump_1
-    position: bottom-right
-    icon: "●"  # Optional, defaults to entity type icon
+    icon: "mdi:water-pump"  # Optional, defaults to the entity type icon
     icon_size: 28  # Optional: custom size for this button
   - entity: light.tank_led
-    position: top-right
   - entity: script.fill_tank
-    position: bottom-left
-    icon: "▶"
+    icon: "mdi:play"
     icon_size: 20  # Optional: custom size for this button
 
 # Optimizations
@@ -743,11 +740,15 @@ hide_inactive_leds: true
 
 ### Multi-Button Control
 
-Configure multiple buttons to control various entities:
+Configure up to 4 buttons to control various entities. Since v2.3 they are laid
+out in a **centered bar under the title**, above a thin separator that follows the
+theme. With no button configured, neither the bar nor the separator is drawn and
+no space is reserved.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `button_icon_size` | number | 22 | Default icon size for all buttons (in pixels) |
+| `buttons_layout` | string | `bar` | `bar` (under the title) or `corners` (pre-2.3 placement, honors each button's `position`) |
 
 **Button Properties:**
 
@@ -755,34 +756,36 @@ Configure multiple buttons to control various entities:
 button_icon_size: 22  # Global default size for all buttons
 buttons:
   - entity: switch.my_switch
-    position: bottom-right  # top-left, top-right, bottom-left, bottom-right
-    icon: "●"  # Optional, defaults to entity type
+    icon: "mdi:toggle-switch"  # Optional, defaults to the entity type icon
     icon_size: 28  # Optional: custom size for this button (overrides button_icon_size)
 ```
 
 | Button Property | Type | Default | Description |
 |-----------------|------|---------|-------------|
 | `entity` | string | *required* | Entity ID to control |
-| `position` | string | `bottom-right` | Button position (top-left, top-right, bottom-left, bottom-right) |
-| `icon` | string | *auto* | Custom icon/emoji (defaults to entity type icon) |
+| `icon` | string | *auto* | Custom icon (defaults to the entity type icon) |
 | `icon_size` | number | `button_icon_size` | Custom icon size for this button |
+| `position` | string | `bottom-right` | **Only with `buttons_layout: corners`** (top-left, top-right, bottom-left, bottom-right). Ignored in `bar` layout |
 
 **Icon Customization:**
-- You can use **any emoji** (💡, 🎬, ●, 🔥, ⚡, 🌙, ⭐, 🎵, 🌡️, 💧, etc.)
-- You can use **any text or symbol** (●, ▶, ■, ★, ON, OFF, etc.)
+- Preferred: **any MDI icon**, written `mdi:name` (`mdi:water-pump`, `mdi:fan`, ...). It is rendered through Home Assistant's `<ha-icon>`, so it inherits the button color and stays crisp at any size. In the visual editor you get HA's native icon picker, with search
+- Still supported: **any emoji** (💡, 🎬, ●, 🔥, ⚡, 🌙, ⭐, 🎵, 🌡️, 💧, etc.)
+- Still supported: **any text or symbol** (●, ▶, ■, ★, ON, OFF, etc.)
 
-**Supported Entity Types:**
-- `switch` - Toggle switch on/off (●)
-- `light` - Toggle light on/off (💡)
-- `scene` - Activate scene (🎬)
-- `script` - Execute script (▶)
-- `input_boolean` - Toggle boolean (●)
-- `automation` - Toggle automation (🤖)
-- `fan` - Toggle fan (🌀)
-- `cover` - Open/close cover (🪟)
-- `climate` - Toggle climate (🌡️)
-- `lock` - Lock/unlock (🔒)
-- `vacuum` - Start/stop vacuum (🤖)
+Anything that is not in `prefix:name` form is inserted as-is, exactly as before v2.3.
+
+**Supported Entity Types** (and their default MDI icon):
+- `switch` - Toggle switch on/off (`mdi:toggle-switch`)
+- `light` - Toggle light on/off (`mdi:lightbulb`)
+- `scene` - Activate scene (`mdi:palette`)
+- `script` - Execute script (`mdi:play`)
+- `input_boolean` - Toggle boolean (`mdi:toggle-switch-outline`)
+- `automation` - Toggle automation (`mdi:robot`)
+- `fan` - Toggle fan (`mdi:fan`)
+- `cover` - Open/close cover (`mdi:window-shutter`)
+- `climate` - Toggle climate (`mdi:thermostat`)
+- `lock` - Lock/unlock (`mdi:lock`)
+- `vacuum` - Start/stop vacuum (`mdi:robot-vacuum`)
 
 **Note:** Old configuration format (`show_switch_button`, `switch_entity`, `switch_button_position`) is still supported for backward compatibility.
 
@@ -800,6 +803,10 @@ buttons:
 #### Dynamic Markers Configuration
 
 Dynamic markers are circular dots that move around the gauge to reflect real-time entity values.
+
+Since v2.3 they are configurable in the **visual editor** ("Dynamic markers" section): tracked
+entity, optional attribute, label, dot size, value display and color, with add/remove buttons.
+Clearing the color falls back to the automatic domain color.
 
 **IMPORTANT:** The entity values must respect the gauge's min/max scale. If an entity value is outside the range, it will be clamped to the nearest boundary.
 
@@ -1036,11 +1043,8 @@ animation_duration: 600
 # Add multiple control buttons
 buttons:
   - entity: switch.main_power
-    position: bottom-right
   - entity: light.power_indicator
-    position: top-right
   - entity: script.reset_counter
-    position: bottom-left
     icon: "🔄"
 markers:
   - value: 2000
@@ -1060,16 +1064,13 @@ max: 30
 # Control multiple devices from one gauge
 buttons:
   - entity: light.living_room
-    position: top-left
-    icon: "💡"
+    icon: "mdi:lightbulb"
   - entity: switch.ac_unit
-    position: top-right
-    icon: "❄️"
+    icon: "mdi:snowflake"
   - entity: scene.movie_mode
-    position: bottom-left
-    icon: "🎬"
+    icon: "mdi:movie-open"
   - entity: automation.night_routine
-    position: bottom-right
+    icon: "mdi:weather-night"
     icon: "🌙"
 severity:
   - color: "#00bfff"    # Blue
@@ -1323,7 +1324,6 @@ zones:
 
 buttons:
   - entity: switch.pump
-    position: bottom-right
     icon: "⚡"
 ```
 

@@ -88,16 +88,15 @@ optimize_leds: true
 # hide_shadows: true                  # Masque tous les box-shadows
 # hide_inactive_leds: true            # Masque les LEDs inactives (grises)
 # Configuration des boutons (nouveau système multi-boutons)
+# Depuis la v2.3 : barre centrée sous le titre, icônes MDI.
+# buttons_layout: corners  # pour retrouver le placement dans les coins (v2.2)
 buttons:
   - entity: switch.refoulement_cuve_1
-    position: bottom-right
-    icon: "⏻"  # Optionnel, icône par défaut selon le type
+    icon: "mdi:water-pump"  # Optionnel, icône par défaut selon le type
   - entity: light.led_cuve_1
-    position: top-right
-    icon: "💡"
+    icon: "mdi:lightbulb"
   - entity: script.remplir_cuve
-    position: bottom-left
-    icon: "▶"
+    icon: "mdi:play"
 # Note: L'ancienne config (show_switch_button, switch_entity) est toujours supportée pour rétrocompatibilité
 # Severity colors based on REAL sensor values (not percentages!)
 severity:

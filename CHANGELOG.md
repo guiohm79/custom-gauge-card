@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-09-08
+
+### Changed
+- **Buttons moved to a bar under the title.** They used to be pinned to the four corners of the card, on top of the gauge; they now sit in a centered row below the title, separated from it by a hairline whose color follows the theme. The bar centers itself for 1 to 4 buttons
+- Buttons are **44 x 44 px** instead of 36 x 36, the minimum comfortable touch target
+- **Default icons are now MDI** (`mdi:lightbulb`, `mdi:water-pump`, ...) rendered through `<ha-icon>`, instead of emojis. A custom `icon` written as `prefix:name` renders as an `<ha-icon>`; anything else - an emoji, a symbol, plain text - keeps the previous behavior, so existing configurations are unaffected
+- With `buttons: []` (or none configured) neither the bar nor its separator is drawn, and no space is reserved - the card is exactly as tall as before
+
+### Added
+- `buttons_layout: bar | corners` - `bar` is the new default; `corners` restores the pre-2.3 placement and keeps honoring each button's `position`
+- Buttons are configurable in the **visual editor**: a "Buttons" section with entity picker, HA's native MDI icon picker and per-button icon size, capped at 4 buttons
+- `dynamic_markers` are configurable in the **visual editor** too: a "Dynamic markers" section with tracked entity, optional attribute, label, dot size, value display and color (cleared = automatic color by entity domain), with add/remove buttons. They used to be reachable only from YAML
+
+### Fixed
+- The 24 h trend indicator no longer lands on top of a button: with a button bar it is lifted above it
+
 ## [2.2.0] - 2026-08-04
 
 ### Added

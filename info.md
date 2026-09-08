@@ -88,9 +88,7 @@ tap_action:
   action: more-info
 buttons:
   - entity: light.living_room
-    position: top-right
   - entity: switch.ac_unit
-    position: bottom-right
 severity:
   - color: "#00bfff"
     value: 16
