@@ -44,6 +44,12 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 
 
 
+## What's new in v2.4
+
+- **LED shape** — `led_shape: rect` draws radial segments for a hi-fi VU meter look, sized with `led_length` and `led_corner_radius`. See [Appearance](#appearance)
+- **Color gradients** — `severity_mode: gradient | gradient_arc` blends the LED colors between severity thresholds instead of stepping. See [Markers and Zones](#markers-and-zones)
+- Both are available in the visual editor; the defaults (`round`, `steps`) render exactly as before
+
 ## What's new in v2.2
 
 - **Alarms** — `alarms:` replaces the single `center_shadow_pulse`: any number of alarms, each watching **any entity** (not just the gauge one), with 8 condition types (`range`, `outside`, `above`, `below`, `equal`, `state`, `state_not`, `unavailable`) and 4 visual effects (`shadow_pulse`, `leds_blink`, `value_blink`, `border_pulse`), plus a per-alarm color. See [Alarms](#alarms-v22)
@@ -301,7 +307,10 @@ debounce_updates: true
 |--------|------|---------|-------------|
 | `gauge_size` | number | 200 | Gauge size in pixels |
 | `center_size` | number | 120 | Center size in pixels |
-| `led_size` | number | 8 | LED size in pixels |
+| `led_size` | number | 8 | LED size in pixels (diameter; for `rect`, the segment width along the arc) |
+| `led_shape` | string | `round` | **v2.4:** `round` (LEDs) or `rect` (radial segments, hi-fi VU meter style) |
+| `led_length` | number | `led_size × 2` | **v2.4:** `rect` only — radial length of the segments in pixels. Segments grow inward: their outer edge stays where round LEDs sit |
+| `led_corner_radius` | number | 1 | **v2.4:** `rect` only — corner rounding in pixels |
 | `leds_count` | number | 100 | Number of LEDs |
 | `bidirectional` | boolean | false | Enable bidirectional display (thermometer-style for negative values) |
 | `card_width` | string | `auto` | **NEW:** Width of the card container (e.g., "300px") |
@@ -797,6 +806,9 @@ Anything that is not in `prefix:name` form is inserted as-is, exactly as before 
 | `dynamic_markers` | list | **NEW:** List of dynamic markers that follow entity values (see below) |
 | `zones` | list | List of zones with `from`, `to`, `color`, `opacity` (uses real sensor values) |
 | `severity` | list | **UPDATED:** List of thresholds with `value`, `color` for LEDs (uses real sensor values, not percentages) |
+| `severity_mode` | string | **v2.4:** `steps` (default) — one flat color per zone; `gradient` — the whole bar takes one color, blended in RGB between the two thresholds around the current value; `gradient_arc` — each LED takes the color of its own position, so the lit part shows the full gradient |
+
+Gradient modes need colors that can be resolved to RGB: hex, CSS names, `rgb()`, `hsl()`. A `var(--…)` color cannot be blended and falls back to the `steps` color. The card and center shadows always follow the color of the current value.
 
 **Important:** All configuration values (`markers`, `zones`, `severity`, `pulse_min/max`) now use **real sensor values** for consistency and ease of use.
 
@@ -911,6 +923,58 @@ severity:
     value: 28           # Orange from 22-28°C (warm)
   - color: "#f44336"    # Red
     value: 35           # Red from 28-35°C (hot)
+```
+
+### Hi-Fi VU Meter Style (v2.4)
+
+Rectangular segments on a partial arc, like the needle-less meters of a hi-fi amplifier.
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.living_room_sound_level
+name: Sound Level
+unit: dB
+min: 30
+max: 100
+arc_start: 225          # 7:30 o'clock
+arc_sweep: 270
+leds_count: 40
+led_shape: rect
+led_size: 6             # segment width, along the arc
+led_length: 18          # segment length, along the radius
+led_corner_radius: 1
+hide_inactive_leds: false
+severity:
+  - color: "#4caf50"
+    value: 70
+  - color: "#ffeb3b"
+    value: 85
+  - color: "#f44336"
+    value: 100
+```
+
+### Color Gradient (v2.4)
+
+`gradient_arc` paints each lit LED with the color of its own position: the bar fades from blue to red as it fills. Use `gradient` instead to give the whole bar one color, blended by the current value.
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.outdoor_temperature
+name: Outdoor
+unit: "°C"
+min: -10
+max: 40
+severity_mode: gradient_arc   # or: gradient
+severity:
+  - color: "#2196f3"    # blue at -10°C and below
+    value: -10
+  - color: "#4caf50"    # green around 15°C
+    value: 15
+  - color: "orange"     # CSS names, rgb() and hsl() blend too
+    value: 28
+  - color: "#f44336"    # red at 40°C
+    value: 40
+enable_shadow: true     # the shadow follows the color of the current value
 ```
 
 ### Temperature Gauge with High Temperature Alarm

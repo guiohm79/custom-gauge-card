@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-09-13
+
+### Added
+- `led_shape: round | rect` - `rect` draws radial segments (hi-fi VU meter look). `led_length` sets their radial length (default `led_size × 2`), `led_corner_radius` their corner rounding (default 1). Segments grow inward from the outer edge of the LED ring, so scale ticks, markers and zones do not move
+- `severity_mode: steps | gradient | gradient_arc` - `gradient` blends the whole bar in RGB between the two thresholds around the current value; `gradient_arc` colors each LED from its own position on the scale. Colors that cannot be resolved to RGB (`var(--…)`) fall back to the steps color
+- Both options are in the visual editor: LED shape, segment length and corner radius under "Appearance", a "Color mode" select with contextual help at the top of "Severity"
+
+### Unchanged
+- With the defaults (`round`, `steps`) the card renders exactly as 2.3
+
 ## [2.3.0] - 2026-09-08
 
 ### Changed

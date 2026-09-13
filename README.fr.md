@@ -217,7 +217,10 @@ optimize_leds: true
 |--------|------|--------|-------------|
 | `gauge_size` | number | 200 | Taille de la jauge en pixels |
 | `center_size` | number | 120 | Taille du centre en pixels |
-| `led_size` | number | 8 | Taille des LEDs en pixels |
+| `led_size` | number | 8 | Taille des LEDs en pixels (diamètre ; en `rect`, largeur du segment le long de l'arc) |
+| `led_shape` | string | `round` | **v2.4 :** `round` (LEDs) ou `rect` (segments radiaux, style vu-mètre hi-fi) |
+| `led_length` | number | `led_size × 2` | **v2.4 :** `rect` uniquement — longueur radiale des segments en pixels. Les segments s'allongent vers l'intérieur : leur bord extérieur reste à la place des LEDs rondes |
+| `led_corner_radius` | number | 1 | **v2.4 :** `rect` uniquement — arrondi des coins en pixels |
 | `leds_count` | number | 100 | Nombre de LEDs |
 
 ### Thèmes
@@ -550,6 +553,26 @@ Tout ce qui n'est pas de la forme `prefixe:nom` est inséré tel quel, exactemen
 | `markers` | list | Liste de marqueurs avec `value`, `color`, `label` |
 | `zones` | list | Liste de zones avec `from`, `to`, `color`, `opacity` |
 | `severity` | list | Liste de paliers avec `value`, `color` pour les LEDs |
+| `severity_mode` | string | **v2.4 :** `steps` (défaut) — une couleur plate par palier ; `gradient` — toute la barre prend une seule couleur, interpolée en RGB entre les deux paliers qui encadrent la valeur ; `gradient_arc` — chaque LED prend la couleur de sa propre position, la partie allumée affiche tout le dégradé |
+
+Les modes dégradé demandent des couleurs résolubles en RGB : hex, noms CSS, `rgb()`, `hsl()`. Une couleur `var(--…)` ne peut pas être interpolée et retombe sur la couleur par paliers.
+
+```yaml
+# Style vu-mètre hi-fi
+led_shape: rect
+led_size: 6          # largeur le long de l'arc
+led_length: 18       # longueur le long du rayon
+arc_start: 225
+arc_sweep: 270
+leds_count: 40
+
+# Dégradé le long de la barre
+severity_mode: gradient_arc
+severity:
+  - { color: "#2196f3", value: -10 }
+  - { color: "#4caf50", value: 15 }
+  - { color: "#f44336", value: 40 }
+```
 
 ### Optimisations
 

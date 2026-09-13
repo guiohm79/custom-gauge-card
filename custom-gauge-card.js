@@ -1,7 +1,14 @@
 /**
- * Custom Gauge Card v2.3.0
+ * Custom Gauge Card v2.4.0
  * Home Assistant custom card — LED gauge with arc control, bidirectional mode,
  * scale ticks, 4 buttons and full shadow support.
+ *
+ * Changelog v2.4 vs v2.3:
+ *   - NEW  led_shape: round | rect — `rect` draws radial segments (hi-fi VU
+ *          meter look), sized by led_length / led_corner_radius
+ *   - NEW  severity_mode: steps | gradient | gradient_arc — RGB blend between
+ *          severity thresholds, for the whole bar or along it
+ *   - KEEP defaults (round, steps) render exactly as 2.3
  *
  * Changelog v2.3 vs v2.2:
  *   - CHG  buttons now sit in a centered bar under the title, above a hairline
@@ -36,7 +43,7 @@
 !function () {
   "use strict";
 
-  const CARD_VERSION = '2.3.0';
+  const CARD_VERSION = '2.4.0';
 
   // ── Themes ──────────────────────────────────────────────────────────────────
   const THEMES = {
@@ -138,13 +145,122 @@
     return (0.299 * r + 0.587 * g + 0.114 * b) > 140;
   }
 
+  const DEFAULT_SEVERITY = [{ color:'#4caf50', value:20 }, { color:'#ffeb3b', value:50 }, { color:'#f44336', value:100 }];
+  const SEVERITY_MODES   = ['steps', 'gradient', 'gradient_arc'];
+
+  /**
+   * Steps color. `value` is normalized (0–100 % of min…max), thresholds are real
+   * sensor units. Zones are walked in config order — the first threshold ≥ value
+   * wins — which is what existing, possibly unsorted, configurations rely on.
+   */
   function getLedColor(value, severity, min = 0, max = 100) {
-    const cfg = severity || [{ color:'#4caf50', value:20 }, { color:'#ffeb3b', value:50 }, { color:'#f44336', value:100 }];
+    const cfg = severity || DEFAULT_SEVERITY;
     for (const zone of cfg) {
       const threshold = ((zone.value - min) / (max - min)) * 100;
       if (value <= threshold) return zone.color;
     }
     return '#555';
+  }
+
+  /** Severity thresholds sorted by ascending value, green/yellow/red fallback. */
+  function getSeverityStops(severity) {
+    return (Array.isArray(severity) ? severity : DEFAULT_SEVERITY)
+      .filter(z => z && z.color && !isNaN(parseFloat(z.value)))
+      .map(z => ({ color: z.color, value: parseFloat(z.value) }))
+      .sort((a, b) => a.value - b.value);
+  }
+
+  const RGB_CACHE = new Map();
+  let colorCtx;   // lazily created 2D context, null when unavailable
+
+  /** Canvas-normalized fillStyle (#rrggbb or rgba(r, g, b, a)) → [r, g, b]. */
+  function parseNormalizedColor(s) {
+    const hex = /^#([0-9a-f]{6})$/i.exec(s);
+    if (hex) return [0, 2, 4].map(k => parseInt(hex[1].slice(k, k + 2), 16));
+    const fn = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i.exec(s);
+    return fn ? [fn[1], fn[2], fn[3]].map(Number) : null;
+  }
+
+  /**
+   * Any CSS color → [r, g, b], or null when it cannot be resolved without
+   * layout (var(--x), typos). Hex is parsed directly; names, rgb() and hsl()
+   * go through a canvas, which normalizes fillStyle.
+   */
+  function parseColorToRgb(color) {
+    if (typeof color !== 'string') return null;
+    const key = color.trim();
+    if (RGB_CACHE.has(key)) return RGB_CACHE.get(key);
+    let rgb = null;
+    const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(key);
+    if (m) {
+      let h = m[1];
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      rgb = parseNormalizedColor(`#${h}`);
+    } else {
+      if (colorCtx === undefined) {
+        try { colorCtx = document.createElement('canvas').getContext('2d'); } catch (e) { colorCtx = null; }
+      }
+      if (colorCtx) {
+        // A rejected value is ignored silently and fillStyle keeps the previous
+        // one, so parse from two different sentinels: a color the canvas
+        // accepted reads back the same both times.
+        colorCtx.fillStyle = '#000001'; colorCtx.fillStyle = key; const a = colorCtx.fillStyle;
+        colorCtx.fillStyle = '#000002'; colorCtx.fillStyle = key; const b = colorCtx.fillStyle;
+        if (a === b) rgb = parseNormalizedColor(a);
+      }
+    }
+    RGB_CACHE.set(key, rgb);
+    return rgb;
+  }
+
+  /**
+   * Color linearly blended in RGB between the two thresholds around `value`
+   * (normalized, like getLedColor). Out of range → the extreme threshold color.
+   * null when one of the two colors cannot be parsed.
+   */
+  function getGradientColor(value, severity, min = 0, max = 100) {
+    const stops = getSeverityStops(severity);
+    if (!stops.length) return null;
+    const pct  = z => ((z.value - min) / (max - min)) * 100;
+    const last = stops[stops.length - 1];
+    if (stops.length === 1 || value <= pct(stops[0])) return stops[0].color;
+    if (value >= pct(last)) return last.color;
+    let i = 1;
+    while (i < stops.length - 1 && pct(stops[i]) < value) i++;
+    const a = stops[i - 1], b = stops[i];
+    const ca = parseColorToRgb(a.color), cb = parseColorToRgb(b.color);
+    if (!ca || !cb) return null;
+    const span = pct(b) - pct(a);
+    const t    = span > 0 ? (value - pct(a)) / span : 1;
+    const [r, g, bl] = ca.map((v, k) => Math.round(v + (cb[k] - v) * t));
+    return `rgb(${r}, ${g}, ${bl})`;
+  }
+
+  /**
+   * Severity color for a normalized value. Any mode but `steps` blends; a blend
+   * that cannot be computed (a var(--theme) color) falls back to the steps color.
+   */
+  function getSeverityColor(config, value, min, max, mode = config.severity_mode) {
+    if (mode && mode !== 'steps') {
+      const c = getGradientColor(value, config.severity, min, max);
+      if (c) return c;
+    }
+    return getLedColor(value, config.severity, min, max);
+  }
+
+  /**
+   * LED ring geometry. Each LED is centered `radius` px from the gauge center,
+   * `length` px along the radius and `size` px along the arc, so its outer edge
+   * always sits size/2 inside the gauge edge. Round LEDs have length === size,
+   * which gives exactly the pre-2.4 radius: gaugeSize/2 - led_size.
+   */
+  function ledGeometry(config) {
+    const gaugeSize = config.gauge_size || 200;
+    const size      = config.led_size   || 8;
+    const rect      = config.led_shape === 'rect';
+    const length    = rect ? config.led_length : size;
+    const margin    = length / 2 + size / 2;
+    return { gaugeSize, size, length, rect, radius: gaugeSize / 2 - margin };
   }
 
   /**
@@ -389,6 +505,12 @@
       scale_labels: config.scale_labels !== false,
       // ── v2.0: tap_action ──────────────────────────────────────────────────
       tap_action:   config.tap_action   || { action: 'more-info' },
+      // ── v2.4: LED shape & severity blending ───────────────────────────────
+      led_shape:         config.led_shape === 'rect' ? 'rect' : 'round',
+      led_length:        Number(config.led_length) > 0 ? Number(config.led_length) : (config.led_size || 8) * 2,
+      led_corner_radius: Number(config.led_corner_radius) >= 0 && config.led_corner_radius !== null && config.led_corner_radius !== ''
+                           ? Number(config.led_corner_radius) : 1,
+      severity_mode:     SEVERITY_MODES.includes(config.severity_mode) ? config.severity_mode : 'steps',
     };
 
     // Backward compat: show_switch_button → buttons
@@ -712,15 +834,20 @@
     ctx.ledsCount = optimizeLEDs(ctx.config.leds_count);
     const n         = ctx.ledsCount;
     const theme     = getTheme(ctx.config.theme || 'default', ctx.config);
-    const gaugeSize = ctx.config.gauge_size || 200;
-    const ledSize   = ctx.config.led_size   || 8;
+    const geo       = ledGeometry(ctx.config);
+    const gaugeSize = geo.gaugeSize;
     const arcStart  = ctx.config.arc_start;  // v2.0: degrees from top, clockwise
     const arcSweep  = ctx.config.arc_sweep;  // v2.0: total arc degrees
+    // v2.4: once rotated, the LED's x axis is the radius — width = length makes
+    // the long side of a rect segment point outward. Round LEDs keep the CSS size.
+    const shapeCss  = geo.rect
+      ? `width:${geo.length}px;height:${geo.size}px;border-radius:${ctx.config.led_corner_radius}px;`
+      : '';
 
     const leds = Array.from({ length: n }, (_, i) => {
       // cssAngle: subtract 90 because CSS 0° points right, we want 0° to point top
       const cssAngle = (arcStart + (i / n) * arcSweep - 90).toFixed(3);
-      return `<div class="led" id="led-${i}" style="transform:rotate(${cssAngle}deg) translate(${gaugeSize/2-ledSize}px)"></div>`;
+      return `<div class="led" id="led-${i}" style="${shapeCss}transform:rotate(${cssAngle}deg) translate(${geo.radius}px)"></div>`;
     }).join('');
 
     // When scale_ticks is enabled the SVG overlay extends PAD=38px beyond the gauge
@@ -808,6 +935,8 @@
     const { gauge_size:gSz=200, arc_start:arcStart=0, arc_sweep:arcSweep=360,
             scale_steps:steps=5, scale_labels=true, min=0, max=100,
             led_size:ledSize=8, decimals=0 } = ctx.config;
+    // Anchored on the LEDs' outer edge (see ledGeometry), which led_length does
+    // not move — rect segments grow inward, the ticks stay put.
     const ledR   = gSz / 2 - ledSize;
     const PAD    = 38;
     const svgSz  = gSz + PAD * 2;
@@ -879,7 +1008,9 @@
   function updateLeds(ctx, value, ledsCount, min, max) {
     const cfg       = ctx.config;
     const ledInfo   = calculateBidirectionalLeds(value, min, max, ledsCount, cfg.bidirectional);
-    const color     = getLedColor(ledInfo.normalizedValue, cfg.severity, min, max);
+    // Card and center shadows keep the color of the current value, whatever the mode.
+    const color     = getSeverityColor(cfg, ledInfo.normalizedValue, min, max);
+    const perLed    = cfg.severity_mode === 'gradient_arc';
 
     const gc = ctx.shadowRoot.getElementById('gauge-container');
     if (gc) gc.style.boxShadow = cfg.enable_shadow ? `0 0 30px 2px ${color}` : '';
@@ -904,9 +1035,12 @@
       }
 
       if (isActive) {
+        // gradient_arc: each LED shows the color of its own position on the scale,
+        // i.e. the value min + ((i + 0.5) / n) * (max - min), normalized here.
+        const c = perLed ? getSeverityColor(cfg, ((i + 0.5) / ledsCount) * 100, min, max, 'gradient') : color;
         led.style.display    = '';
-        led.style.background = `radial-gradient(circle,rgba(255,255,255,.8),${color})`;
-        led.style.boxShadow  = `0 0 8px ${color}`;
+        led.style.background = `radial-gradient(circle,rgba(255,255,255,.8),${c})`;
+        led.style.boxShadow  = `0 0 8px ${c}`;
         led.classList.add('active');
       } else {
         if (cfg.hide_inactive_leds) {
@@ -930,7 +1064,7 @@
       if (cs) cs.style.boxShadow = 'none';
       return;
     }
-    const color  = getLedColor(value, ctx.config.severity, min, max);
+    const color  = getSeverityColor(ctx.config, value, min, max);
     const blur   = ctx.config.center_shadow_blur   || 30;
     const spread = ctx.config.center_shadow_spread || 15;
     ctx.currentShadowColor = color;
@@ -1014,7 +1148,7 @@
       // because _change() updates _config immediately before HA calls setConfig.
       // `alarms` is deliberately absent: the alarms editor redraws itself, a full
       // rebuild on every keystroke would steal focus.
-      const STRUCTURAL = ['theme', 'center_shadow', 'entity'];
+      const STRUCTURAL = ['theme', 'center_shadow', 'entity', 'led_shape'];
       if (STRUCTURAL.some(k => (this._builtConfig || {})[k] !== config[k])) this._build();
     }
 
@@ -1601,6 +1735,28 @@
       return wrap;
     }
 
+    /** Color mode select + a help text that follows the selected mode. */
+    _buildSeverityModeField() {
+      const BLEND_NOTE = ' Colors must be resolvable (hex, name, rgb(), hsl()) — a var(--…) color falls back to steps.';
+      const HELP = {
+        steps:        'Each zone paints the lit LEDs with a flat color: the first zone whose threshold ≥ the current value applies.',
+        gradient:     'The whole lit bar takes a single color, blended between the two thresholds around the current value.' + BLEND_NOTE,
+        gradient_arc: 'Each LED takes the color of its own position on the scale, so the lit part shows the full gradient.' + BLEND_NOTE,
+      };
+      const field = this._sel('severity_mode', { select: { mode: 'dropdown', options: [
+        { value: 'steps',        label: 'Steps' },
+        { value: 'gradient',     label: 'Gradient — whole bar blended by value' },
+        { value: 'gradient_arc', label: 'Gradient — blended along the bar' },
+      ]}}, 'Color mode', 'steps');
+      const help = this._info(HELP[this._config.severity_mode] || HELP.steps);
+      field.querySelector('ha-selector').addEventListener('value-changed', e => {
+        help.textContent = HELP[e.detail.value] || HELP.steps;
+      });
+      const frag = document.createDocumentFragment();
+      frag.append(field, help);
+      return frag;
+    }
+
     _buildSeverityEditor() {
       const wrap = document.createElement('div');
       wrap.className = 'severity-editor';
@@ -1779,6 +1935,14 @@
           this._sel('leds_count',   { number: { min: 20, max: 300, step: 5, mode: 'slider' } }, 'LED count', 100),
           this._sel('bidirectional', { boolean: {} }, 'Bidirectional mode', false),
         ),
+        this._sel('led_shape', { select: { mode: 'dropdown', options: [
+          { value: 'round', label: 'Round (LED)' },
+          { value: 'rect',  label: 'Rectangle (VU meter)' },
+        ]}}, 'LED shape', 'round'),
+        cfg.led_shape === 'rect' ? this._row(2,
+          this._sel('led_length',        { number: { min: 2, max: 40, step: 1,   mode: 'slider', unit_of_measurement: 'px' } }, 'Segment length', (cfg.led_size || 8) * 2),
+          this._sel('led_corner_radius', { number: { min: 0, max: 10, step: 0.5, mode: 'slider', unit_of_measurement: 'px' } }, 'Corner radius',  1),
+        ) : null,
       ));
 
       // ── Arc ─────────────────────────────────────────────────────────────────
@@ -1866,7 +2030,8 @@
 
       // ── Severity ─────────────────────────────────────────────────────────────
       root.appendChild(this._section('Severity (LED colors)',
-        this._info('Define color zones by value. The first zone whose threshold ≥ the current value applies.'),
+        this._buildSeverityModeField(),
+        this._info('Define color zones by value, in the sensor unit.'),
         this._buildSeverityEditor(),
       ));
 
