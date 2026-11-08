@@ -44,6 +44,13 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 
 
 
+## What's new in v2.5
+
+- **Trend indicator fixed** — `show_trend: true` displayed nothing with recent Home Assistant versions; it now reads the history correctly ([issue #19](https://github.com/guiohm79/custom-gauge-card/issues/19))
+- **Trend options** — absolute variation in the sensor unit (`trend_mode: absolute`), position (`trend_position`, including `below-title`), window length, periodic refresh, period label, colors, font size and background. See [Trend Indicator](#trend-indicator-v25)
+- **Bidirectional reference** — `bidirectional_reference` sets the value the LEDs grow from (e.g. 21 °C on a 15–30 °C gauge). See [Bidirectional Display](#bidirectional-display)
+- All in the visual editor; defaults render as before (the trend now refreshes every 5 minutes instead of only at load)
+
 ## What's new in v2.4
 
 - **LED shape** — `led_shape: rect` draws radial segments for a hi-fi VU meter look, sized with `led_length` and `led_corner_radius`. See [Appearance](#appearance)
@@ -85,9 +92,9 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 - Full support for bidirectional mode
 
  **Trend Indicator**
-- Display 24-hour evolution
-- Percentage change with directional arrow
-- Automatic history from Home Assistant
+- Evolution over 24 hours (or any period)
+- Percentage or absolute change with directional arrow
+- Automatic history from Home Assistant, refreshed periodically
 
  **Multi-Button Control**
 - Control multiple entities directly from the gauge
@@ -313,6 +320,7 @@ debounce_updates: true
 | `led_corner_radius` | number | 1 | **v2.4:** `rect` only — corner rounding in pixels |
 | `leds_count` | number | 100 | Number of LEDs |
 | `bidirectional` | boolean | false | Enable bidirectional display (thermometer-style for negative values) |
+| `bidirectional_reference` | number | auto | **v2.5:** Bidirectional only — value the LEDs grow from, in the sensor unit. Default: 0 when it lies between `min` and `max`, otherwise the midpoint. Clamped to `[min, max]` |
 | `card_width` | string | `auto` | **NEW:** Width of the card container (e.g., "300px") |
 | `card_height` | string | `auto` | **NEW:** Height of the card container (e.g., "350px") |
 | `card_padding` | string | `16px` | **NEW:** Padding of the card container |
@@ -534,9 +542,10 @@ tap_action:
 The bidirectional mode enables a thermometer-style display for gauges with values spanning negative to positive ranges (e.g., -10°C to +40°C).
 
 **How it works:**
-- **Reference point**: Automatically set at zero (if within range) or at the midpoint
-- **Positive values**: LEDs activate clockwise from the top (12 o'clock position)
-- **Negative values**: LEDs activate counter-clockwise from the top
+- **Reference point**: zero (if within range) or the midpoint by default, or any value with `bidirectional_reference` (v2.5)
+- **Position on the arc**: the reference sits at its proportional place between `min` and `max` — the scale stays linear, so ticks, markers, zones and dynamic markers stay aligned. To put it at 12 o'clock, use a range centered on it (e.g. `min: 12`, `max: 30` for 21) or adjust `arc_start`
+- **Above the reference**: LEDs light up clockwise from it
+- **Below the reference**: LEDs light up counter-clockwise from it
 - **LED allocation**: Proportional to range sizes (unequal ranges create unequal LED distributions)
 
 **When to use:**
@@ -565,6 +574,20 @@ Symmetric display from center
 bidirectional: true  # Enable thermometer-style display
 min: -10             # Minimum value (can be negative)
 max: 40              # Maximum value
+```
+
+**Custom reference (v2.5)** — a room temperature gauge lighting up from 21 °C instead of the 22.5 °C midpoint:
+
+```yaml
+bidirectional: true
+bidirectional_reference: 21
+min: 15
+max: 30
+zones:
+  - from: 19
+    to: 23
+    color: "#4caf50"
+    opacity: 0.4
 ```
 
 **Important notes:**
@@ -744,7 +767,31 @@ hide_inactive_leds: true
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `show_trend` | boolean | false | Show 24h trend indicator |
+| `show_trend` | boolean | false | Show the trend indicator (change over `trend_hours`) |
+| `trend_mode` | string | `percent` | **v2.5:** `percent` (relative change) or `absolute` (change in the sensor unit, e.g. `↑ 0.6 °C`). A relative change from 0 always falls back to `absolute` |
+| `trend_position` | string | `bottom-right` | **v2.5:** `bottom-right`, `bottom-left`, `top-right`, `top-left` or `below-title` (in the card flow, between the title and the button bar — never overlaps) |
+| `trend_hours` | number | 24 | **v2.5:** Length of the trend window, in hours |
+| `trend_update_interval` | number | 300 | **v2.5:** How often the start-of-window value is re-read from the history, in seconds (minimum 60). `0` reads it once, like before 2.5. The current value is always the live one |
+| `trend_show_period` | boolean | false | **v2.5:** Show the period (`24 h`) next to the variation |
+| `trend_font_size` | string | `12px` | **v2.5:** Font size of the indicator |
+| `trend_background` | string | `rgba(0,0,0,.6)` | **v2.5:** Background of the indicator (any CSS value, e.g. `transparent`) |
+| `trend_up_color` / `trend_down_color` / `trend_stable_color` | string | `#4caf50` / `#f44336` / `#ffeb3b` | **v2.5:** Arrow colors. "Stable" means the change rounds to zero at the displayed precision |
+
+#### Trend Indicator (v2.5)
+
+The indicator compares the live value with the value at the start of the window, read from the Home Assistant recorder (so the entity must be recorded). With `attribute:`, the attribute is tracked.
+
+```yaml
+show_trend: true
+trend_mode: absolute        # ↑ 0.6 °C instead of ↑ 2.9%
+trend_position: below-title
+trend_show_period: true     # ↑ 0.6 °C 24 h
+trend_font_size: 11px
+trend_background: rgba(0,0,0,.3)
+trend_up_color: "#f44336"   # a rising temperature in red
+trend_down_color: "#2196f3"
+```
+
 | `buttons` | list | `[]` | List of button configurations (see Multi-Button Control below) |
 
 ### Multi-Button Control

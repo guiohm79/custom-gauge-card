@@ -30,9 +30,9 @@ Une carte personnalisée pour Home Assistant qui affiche vos capteurs sous forme
 - Configuration flexible des couleurs et opacités
 
  **Indicateur de Tendance**
-- Affichage de l'évolution sur 24 heures
-- Pourcentage de changement avec flèche directionnelle
-- Historique automatique depuis Home Assistant
+- Évolution sur 24 heures (ou toute autre période)
+- Variation en pourcentage ou absolue, avec flèche directionnelle
+- Historique automatique depuis Home Assistant, rafraîchi périodiquement
 
  **Contrôle Multi-Boutons**
 - Contrôlez plusieurs entités directement depuis la jauge
@@ -222,6 +222,8 @@ optimize_leds: true
 | `led_length` | number | `led_size × 2` | **v2.4 :** `rect` uniquement — longueur radiale des segments en pixels. Les segments s'allongent vers l'intérieur : leur bord extérieur reste à la place des LEDs rondes |
 | `led_corner_radius` | number | 1 | **v2.4 :** `rect` uniquement — arrondi des coins en pixels |
 | `leds_count` | number | 100 | Nombre de LEDs |
+| `bidirectional` | boolean | false | Mode bidirectionnel : les LEDs partent d'une valeur de référence, dans un sens au-dessus et dans l'autre en dessous |
+| `bidirectional_reference` | number | auto | **v2.5 :** Bidirectionnel uniquement — valeur d'où partent les LEDs, dans l'unité du capteur. Par défaut : 0 s'il est entre `min` et `max`, sinon le milieu. Ramenée dans `[min, max]`. La référence est placée à sa position proportionnelle sur l'arc : marqueurs, zones et graduations restent alignés |
 
 ### Thèmes
 
@@ -492,7 +494,27 @@ hide_inactive_leds: true
 
 | Option | Type | Défaut | Description |
 |--------|------|--------|-------------|
-| `show_trend` | boolean | false | Afficher l'indicateur de tendance 24h |
+| `show_trend` | boolean | false | Afficher l'indicateur de tendance (évolution sur `trend_hours`) |
+| `trend_mode` | string | `percent` | **v2.5 :** `percent` (variation relative) ou `absolute` (variation dans l'unité du capteur, ex. `↑ 0.6 °C`). Une variation relative depuis 0 bascule toujours en `absolute` |
+| `trend_position` | string | `bottom-right` | **v2.5 :** `bottom-right`, `bottom-left`, `top-right`, `top-left` ou `below-title` (dans le flux de la carte, entre le titre et la barre de boutons — ne chevauche rien) |
+| `trend_hours` | number | 24 | **v2.5 :** Durée de la fenêtre de tendance, en heures |
+| `trend_update_interval` | number | 300 | **v2.5 :** Fréquence de relecture de la valeur de début de fenêtre dans l'historique, en secondes (minimum 60). `0` la lit une seule fois, comme avant la 2.5. La valeur courante est toujours celle en direct |
+| `trend_show_period` | boolean | false | **v2.5 :** Afficher la période (`24 h`) à côté de la variation |
+| `trend_font_size` | string | `12px` | **v2.5 :** Taille de police de l'indicateur |
+| `trend_background` | string | `rgba(0,0,0,.6)` | **v2.5 :** Fond de l'indicateur (toute valeur CSS, ex. `transparent`) |
+| `trend_up_color` / `trend_down_color` / `trend_stable_color` | string | `#4caf50` / `#f44336` / `#ffeb3b` | **v2.5 :** Couleurs de la flèche. « Stable » = la variation arrondie à la précision affichée vaut zéro |
+
+L'indicateur compare la valeur en direct à celle du début de la fenêtre, lue dans l'historique de Home Assistant (l'entité doit donc être enregistrée par le recorder). Avec `attribute:`, c'est l'attribut qui est suivi.
+
+```yaml
+show_trend: true
+trend_mode: absolute        # ↑ 0.6 °C au lieu de ↑ 2.9%
+trend_position: below-title
+trend_show_period: true     # ↑ 0.6 °C 24 h
+trend_up_color: "#f44336"   # une température qui monte, en rouge
+trend_down_color: "#2196f3"
+```
+
 | `buttons` | list | `[]` | Liste de configurations de boutons (voir Contrôle Multi-Boutons ci-dessous) |
 
 ### Contrôle Multi-Boutons

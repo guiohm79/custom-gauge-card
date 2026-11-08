@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-11-08
+
+### Fixed
+- **Trend indicator never displayed** ([issue #19](https://github.com/guiohm79/custom-gauge-card/issues/19)): the `history/history_during_period` websocket answer is keyed by entity id, not an array, and its compressed states carry the value in `s`, not `state`. The indicator now reads `history[entity]`, accepts both `s` and `state`, and skips unavailable / non-numeric readings
+- With `attribute:` the trend tracks the attribute instead of the entity state
+- A relative change from 0 no longer shows `0.0%`: it falls back to the absolute change
+- A change that rounds to zero at the displayed precision shows the stable arrow instead of a rising or falling one
+- The indicator no longer duplicates when the card is re-configured while a history request is in flight
+
+### Added
+- `trend_mode: percent | absolute` - `absolute` shows the change in the sensor unit (`↑ 0.6 °C`)
+- `trend_position: bottom-right | bottom-left | top-right | top-left | below-title` - `below-title` places the indicator in the card flow, between the title and the button bar
+- `trend_hours` (default 24), `trend_show_period` (shows `24 h` next to the variation)
+- `trend_update_interval` - the start-of-window value is re-read every 300 s by default (minimum 60, `0` = once). The current value is the live one, so the indicator follows the value shown in the center
+- `trend_font_size`, `trend_background`, `trend_up_color`, `trend_down_color`, `trend_stable_color`
+- `bidirectional_reference` - value the bidirectional LEDs grow from, instead of 0 or the midpoint. Clamped to `[min, max]`; the scale stays linear, so markers, zones, dynamic markers and ticks stay aligned
+- All the above in the visual editor: a dedicated "Trend" section (split from "Click action") whose options appear as soon as "Show trend" is ticked, with a hint while it is off; the reference field appears under "Bidirectional mode" the same way
+
+### Unchanged
+- Without the new options the gauge renders as 2.4; the trend indicator looks the same but now refreshes every 5 minutes
+
 ## [2.4.0] - 2026-09-13
 
 ### Added

@@ -1,7 +1,15 @@
 /**
- * Custom Gauge Card v2.4.0
+ * Custom Gauge Card v2.5.0
  * Home Assistant custom card — LED gauge with arc control, bidirectional mode,
  * scale ticks, 4 buttons and full shadow support.
+ *
+ * Changelog v2.5 vs v2.4 (issue #19):
+ *   - FIX  show_trend displayed nothing: the history websocket answer is keyed
+ *          by entity id (not an array) and its compressed states use `s`
+ *   - NEW  trend_mode (percent | absolute), trend_position, trend_hours,
+ *          trend_update_interval, trend_show_period, trend colors/font/background
+ *   - NEW  bidirectional_reference — custom value the LEDs grow from
+ *   - KEEP defaults render as 2.4, the trend now refreshes every 5 min
  *
  * Changelog v2.4 vs v2.3:
  *   - NEW  led_shape: round | rect — `rect` draws radial segments (hi-fi VU
@@ -43,7 +51,7 @@
 !function () {
   "use strict";
 
-  const CARD_VERSION = '2.4.0';
+  const CARD_VERSION = '2.5.0';
 
   // ── Themes ──────────────────────────────────────────────────────────────────
   const THEMES = {
@@ -63,9 +71,15 @@
 .value{font-size:var(--value-font-size);font-family:var(--value-font-family);font-weight:var(--value-font-weight);color:var(--value-font-color);transition:all .3s ease}
 .unit{font-size:var(--unit-font-size);font-weight:var(--unit-font-weight);color:var(--unit-font-color)}
 .title{margin-top:10px;font-size:var(--title-font-size);font-family:var(--title-font-family);font-weight:var(--title-font-weight);color:var(--title-font-color);text-shadow:0 1px 3px rgba(0,0,0,.5)}
-.gauge-card.has-button-bar .trend-indicator{bottom:calc(var(--button-bar-height,72px) + 10px)}
-.trend-indicator{position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;font-size:12px;color:white;z-index:5}
-.trend-arrow{font-size:14px;font-weight:bold}
+.trend-indicator{position:absolute;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;font-size:12px;color:white;z-index:5;white-space:nowrap}
+.trend-indicator.trend-bottom-right{bottom:10px;right:10px}
+.trend-indicator.trend-bottom-left{bottom:10px;left:10px}
+.trend-indicator.trend-top-right{top:10px;right:10px}
+.trend-indicator.trend-top-left{top:10px;left:10px}
+.trend-indicator.trend-below-title{position:static;margin-top:6px}
+.gauge-card.has-button-bar .trend-bottom-right,.gauge-card.has-button-bar .trend-bottom-left{bottom:calc(var(--button-bar-height,72px) + 10px)}
+.trend-arrow{font-size:1.17em;font-weight:bold}
+.trend-period{opacity:.7}
 .marker{position:absolute;width:4px;height:12px;background:#fff;border-radius:2px;z-index:2;box-shadow:0 0 5px rgba(0,0,0,.5)}
 .marker-label{position:absolute;font-size:10px;color:#fff;z-index:2;text-shadow:0 0 3px rgba(0,0,0,.7)}
 .dynamic-marker-container{position:absolute;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:3}
@@ -147,6 +161,9 @@
 
   const DEFAULT_SEVERITY = [{ color:'#4caf50', value:20 }, { color:'#ffeb3b', value:50 }, { color:'#f44336', value:100 }];
   const SEVERITY_MODES   = ['steps', 'gradient', 'gradient_arc'];
+  const TREND_MODES      = ['percent', 'absolute'];
+  const TREND_POSITIONS  = ['bottom-right', 'bottom-left', 'top-right', 'top-left', 'below-title'];
+  const TREND_MIN_REFRESH = 60;   // seconds — floor for trend_update_interval
 
   /**
    * Steps color. `value` is normalized (0–100 % of min…max), thresholds are real
@@ -280,12 +297,24 @@
 
   function optimizeLEDs(count) { return count || 100; }
 
-  function calculateBidirectionalLeds(value, min, max, ledsCount, bidirectional) {
+  /**
+   * Reference value the bidirectional bar grows from, or null when the gauge is
+   * not bidirectional. `bidirectional_reference` (v2.5) wins when set, clamped to
+   * [min, max]; otherwise zero when it is in range, else the midpoint.
+   */
+  function bidirectionalRef(config, min, max) {
+    if (!config.bidirectional) return null;
+    const custom = config.bidirectional_reference;
+    if (Number.isFinite(custom)) return Math.max(Math.min(min, max), Math.min(Math.max(min, max), custom));
+    return (min <= 0 && max >= 0) ? 0 : (min + max) / 2;
+  }
+
+  /** `ref` is bidirectionalRef(): null → unidirectional. */
+  function calculateBidirectionalLeds(value, min, max, ledsCount, ref) {
     const fullNorm = ((value - min) / (max - min)) * 100;
-    if (!bidirectional) {
+    if (ref === null) {
       return { activeLeds: Math.round((fullNorm / 100) * ledsCount), direction: 'unidirectional', normalizedValue: fullNorm };
     }
-    const ref        = (min <= 0 && max >= 0) ? 0 : (min + max) / 2;
     const total      = max - min;
     const lowerRange = ref - min;
     const upperRange = max - ref;
@@ -302,15 +331,15 @@
    * Convert a sensor value to degrees-from-top-clockwise, respecting arc_start / arc_sweep.
    * arcStart: 0 = top (12 o'clock), clockwise.
    * Returns an angle in the same "degrees from top, clockwise" space.
+   * `refPoint` is bidirectionalRef(): null → unidirectional.
    */
-  function valueToArcAngle(value, min, max, arcStart, arcSweep, bidirectional) {
-    if (!bidirectional) {
+  function valueToArcAngle(value, min, max, arcStart, arcSweep, refPoint) {
+    if (refPoint === null) {
       const frac = Math.max(0, Math.min(1, (value - min) / (max - min)));
       return arcStart + frac * arcSweep;
     }
-    // Bidirectional: zero (or range midpoint) sits at its proportional position in the arc,
-    // exactly like a non-bidirectional gauge would place value=0 in [min, max].
-    const refPoint   = (min <= 0 && max >= 0) ? 0 : (min + max) / 2;
+    // Bidirectional: the reference sits at its proportional position in the arc,
+    // exactly like a non-bidirectional gauge would place that value in [min, max].
     const zeroFrac   = Math.max(0, Math.min(1, (refPoint - min) / (max - min)));
     const refAngle   = arcStart + zeroFrac * arcSweep;
 
@@ -455,6 +484,21 @@
 
   // ── Config ───────────────────────────────────────────────────────────────────
 
+  /** A number from YAML or the editor; null for '', null, undefined, NaN. */
+  function finiteOrNull(v) {
+    if (v === undefined || v === null || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /** trend_update_interval in seconds: default 300, 0 = once, otherwise ≥ TREND_MIN_REFRESH. */
+  function trendRefreshSeconds(v) {
+    const n = finiteOrNull(v);
+    if (n === null) return 300;
+    if (n <= 0) return 0;
+    return Math.max(TREND_MIN_REFRESH, n);
+  }
+
   function parseConfig(config) {
     if (!config.entity) throw new Error('Custom Gauge Card: entity is required.');
 
@@ -511,6 +555,19 @@
       led_corner_radius: Number(config.led_corner_radius) >= 0 && config.led_corner_radius !== null && config.led_corner_radius !== ''
                            ? Number(config.led_corner_radius) : 1,
       severity_mode:     SEVERITY_MODES.includes(config.severity_mode) ? config.severity_mode : 'steps',
+      // ── v2.5: bidirectional reference & trend ─────────────────────────────
+      bidirectional_reference: finiteOrNull(config.bidirectional_reference),
+      trend_mode:            TREND_MODES.includes(config.trend_mode) ? config.trend_mode : 'percent',
+      trend_position:        TREND_POSITIONS.includes(config.trend_position) ? config.trend_position : 'bottom-right',
+      trend_hours:           finiteOrNull(config.trend_hours) > 0 ? finiteOrNull(config.trend_hours) : 24,
+      // seconds; 0 = fetch the history once, like before 2.5
+      trend_update_interval: trendRefreshSeconds(config.trend_update_interval),
+      trend_show_period:     config.trend_show_period === true,
+      trend_font_size:       config.trend_font_size    || null,
+      trend_background:      config.trend_background   || null,
+      trend_up_color:        config.trend_up_color     || '#4caf50',
+      trend_down_color:      config.trend_down_color   || '#f44336',
+      trend_stable_color:    config.trend_stable_color || '#ffeb3b',
     };
 
     // Backward compat: show_switch_button → buttons
@@ -759,8 +816,9 @@
   function updateDynamicMarkers(ctx, hass) {
     if (!ctx._dynamicMarkerElements?.length) return;
     const { min=0, max=100, gauge_size:gSz=200, animation_duration:animDur=1000,
-            arc_start:arcStart=0, arc_sweep:arcSweep=360, bidirectional=false,
+            arc_start:arcStart=0, arc_sweep:arcSweep=360,
             smooth_transitions:smooth=true } = ctx.config;
+    const biRef = bidirectionalRef(ctx.config, min, max);
     const dur = smooth ? animDur / 1000 : 0;
     ctx._dynamicMarkerData.forEach((md, entityId) => {
       const entity = hass.states[entityId];
@@ -769,7 +827,7 @@
       const rawVal = md.config.attribute ? entity.attributes[md.config.attribute] : entity.state;
       const val = Math.max(min, Math.min(max, parseFloat(rawVal)));
       if (isNaN(val)) return;
-      const topDeg = valueToArcAngle(val, min, max, arcStart, arcSweep, bidirectional);
+      const topDeg = valueToArcAngle(val, min, max, arcStart, arcSweep, biRef);
       const targetAngle = topDeg - 90;
       md.element.style.transition = `transform ${dur}s ease-in-out`;
       md.element.style.transform  = `rotate(${targetAngle}deg) translateX(${gSz/2-10}px)`;
@@ -891,11 +949,12 @@
     if (!ctx.config.markers && !ctx.config.zones) return;
     const gauge = ctx.shadowRoot.querySelector('.gauge');
     if (!gauge) return;
-    const { min=0, max=100, gauge_size:gSz=200, arc_start:arcStart=0, arc_sweep:arcSweep=360, bidirectional=false } = ctx.config;
+    const { min=0, max=100, gauge_size:gSz=200, arc_start:arcStart=0, arc_sweep:arcSweep=360 } = ctx.config;
+    const biRef  = bidirectionalRef(ctx.config, min, max);
     const SVG_NS = 'http://www.w3.org/2000/svg';
 
     (ctx.config.markers || []).forEach(marker => {
-      const topDeg = valueToArcAngle(marker.value, min, max, arcStart, arcSweep, bidirectional);
+      const topDeg = valueToArcAngle(marker.value, min, max, arcStart, arcSweep, biRef);
       const cssA   = topDeg - 90;
       const el = document.createElement('div');
       el.className = 'marker';
@@ -913,8 +972,8 @@
     (ctx.config.zones || []).forEach(zone => {
       const r   = gSz / 2 + 5;
       const cxy = (gSz + 20) / 2;
-      const aS  = (valueToArcAngle(zone.from, min, max, arcStart, arcSweep, bidirectional) - 90) * Math.PI / 180;
-      const aE  = (valueToArcAngle(zone.to,   min, max, arcStart, arcSweep, bidirectional) - 90) * Math.PI / 180;
+      const aS  = (valueToArcAngle(zone.from, min, max, arcStart, arcSweep, biRef) - 90) * Math.PI / 180;
+      const aE  = (valueToArcAngle(zone.to,   min, max, arcStart, arcSweep, biRef) - 90) * Math.PI / 180;
       let arc   = (aE - aS) * 180 / Math.PI; if (arc < 0) arc += 360;
       const x1  = cxy + r * Math.cos(aS), y1 = cxy + r * Math.sin(aS);
       const x2  = cxy + r * Math.cos(aE), y2 = cxy + r * Math.sin(aE);
@@ -1002,12 +1061,14 @@
       if (ud) ud.textContent = ctx.config.unit || '';
     }
     ctx.previousState = state;
+    if (ctx.config.show_trend) renderTrend(ctx, state);
     if (ctx._updateButtonsState) ctx._updateButtonsState();
   }
 
   function updateLeds(ctx, value, ledsCount, min, max) {
     const cfg       = ctx.config;
-    const ledInfo   = calculateBidirectionalLeds(value, min, max, ledsCount, cfg.bidirectional);
+    const biRef     = bidirectionalRef(cfg, min, max);
+    const ledInfo   = calculateBidirectionalLeds(value, min, max, ledsCount, biRef);
     // Card and center shadows keep the color of the current value, whatever the mode.
     const color     = getSeverityColor(cfg, ledInfo.normalizedValue, min, max);
     const perLed    = cfg.severity_mode === 'gradient_arc';
@@ -1015,9 +1076,8 @@
     const gc = ctx.shadowRoot.getElementById('gauge-container');
     if (gc) gc.style.boxShadow = cfg.enable_shadow ? `0 0 30px 2px ${color}` : '';
 
-    // Zero LED index: proportional to where refPoint falls in [min, max], same logic as valueToArcAngle.
-    const biRef      = cfg.bidirectional ? ((min <= 0 && max >= 0) ? 0 : (min + max) / 2) : min;
-    const zeroFrac   = Math.max(0, Math.min(1, (biRef - min) / (max - min)));
+    // Zero LED index: proportional to where the reference falls in [min, max], same logic as valueToArcAngle.
+    const zeroFrac   = Math.max(0, Math.min(1, ((biRef ?? min) - min) / (max - min)));
     const zeroLedIdx = Math.round(zeroFrac * ledsCount);
 
     for (let i = 0; i < ledsCount; i++) {
@@ -1092,27 +1152,135 @@
     }
   }
 
-  async function showTrendIndicator(ctx) {
-    if (!ctx.config.show_trend || !ctx._hass || !ctx.config.entity) return;
-    const now = new Date(), start = new Date();
-    start.setHours(now.getHours() - 24);
+  // ── Trend ────────────────────────────────────────────────────────────────────
+  //
+  // The value at the start of the window (`ctx._trendBase`) comes from the
+  // recorder and is refreshed every trend_update_interval seconds; the current
+  // value is the live one, so the indicator always matches the number shown in
+  // the center of the gauge.
+
+  /** Live value of the gauge entity (or its attribute), NaN when unavailable. */
+  function currentGaugeValue(ctx) {
+    const st = ctx._hass?.states[ctx.config.entity];
+    if (!st) return NaN;
+    return parseFloat(ctx.config.attribute ? st.attributes[ctx.config.attribute] : st.state);
+  }
+
+  /**
+   * Numeric value of one entry of history/history_during_period. The websocket
+   * API returns compressed states — `s` for the state, `a` for the attributes —
+   * where the REST API used `state` / `attributes`; both are accepted.
+   */
+  function historyEntryValue(entry, attribute) {
+    if (!entry) return NaN;
+    const raw = attribute ? (entry.a ?? entry.attributes)?.[attribute] : (entry.s ?? entry.state);
+    return parseFloat(raw);
+  }
+
+  /** Fetch the value at the start of the trend window, then redraw the indicator. */
+  async function refreshTrendBase(ctx) {
+    const cfg = ctx.config;
+    if (!cfg.show_trend || !ctx._hass || !cfg.entity) return;
+    if (cfg.power_save_mode && !ctx.isVisible) return;
+    const gen = ctx._trendGen;
+    const end = new Date();
+    const start = new Date(end.getTime() - cfg.trend_hours * 3600 * 1000);
     try {
-      const history = await ctx._hass.callWS({ type:'history/history_during_period', entity_ids:[ctx.config.entity], start_time:start.toISOString(), end_time:now.toISOString(), minimal_response:true });
-      if (!history?.[0]?.length) return;
-      const states = history[0];
-      const cur    = parseFloat(states[states.length - 1].state);
-      const prev   = parseFloat(states[0].state);
-      const diff   = cur - prev;
-      const pct    = prev !== 0 ? (diff / prev) * 100 : 0;
-      const wrap   = document.createElement('div'); wrap.className = 'trend-indicator';
-      const arrow  = document.createElement('span'); arrow.className = 'trend-arrow';
-      const val    = document.createElement('span'); val.className   = 'trend-value';
-      arrow.textContent = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
-      arrow.style.color = diff > 0 ? '#4caf50' : diff < 0 ? '#f44336' : '#ffeb3b';
-      val.textContent   = `${Math.abs(pct).toFixed(1)}%`;
-      wrap.appendChild(arrow); wrap.appendChild(val);
-      ctx.shadowRoot.querySelector('.gauge-card')?.appendChild(wrap);
+      const history = await ctx._hass.callWS({
+        type: 'history/history_during_period',
+        entity_ids: [cfg.entity],
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        minimal_response: true,
+        // With minimal_response only the first state carries attributes, which
+        // is the one we need; skip them entirely when the gauge reads the state.
+        no_attributes: !cfg.attribute,
+      });
+      if (gen !== ctx._trendGen) return;   // re-configured or disconnected meanwhile
+      // The response is keyed by entity id, not an array. Its first entry is the
+      // state at start_time; skip unavailable / non-numeric readings.
+      const states = history?.[cfg.entity] || [];
+      const first  = states.map(e => historyEntryValue(e, cfg.attribute)).find(Number.isFinite);
+      ctx._trendBase = first ?? NaN;
+      renderTrend(ctx, currentGaugeValue(ctx));
     } catch (e) { console.error('custom-gauge-card: error fetching history', e); }
+  }
+
+  function startTrend(ctx) {
+    stopTrend(ctx);
+    if (!ctx.config.show_trend || !ctx._hass) return;
+    refreshTrendBase(ctx);
+    const sec = ctx.config.trend_update_interval;
+    if (sec > 0) ctx.trendTimer = setInterval(() => refreshTrendBase(ctx), sec * 1000);
+  }
+
+  function stopTrend(ctx) {
+    if (ctx.trendTimer) { clearInterval(ctx.trendTimer); ctx.trendTimer = null; }
+    ctx._trendGen = (ctx._trendGen || 0) + 1;   // drops any history request in flight
+  }
+
+  /** `0.6 °C`, `2%`, `3°` — HA style: no space before % and a bare degree sign. */
+  function withUnit(num, unit) {
+    if (!unit) return num;
+    return (unit === '%' || unit === '°') ? `${num}${unit}` : `${num} ${unit}`;
+  }
+
+  function trendPeriodLabel(hours) {
+    return `${Number.isInteger(hours) ? hours : hours.toFixed(1)} h`;
+  }
+
+  /** Draw (or update) the indicator for the current value `cur`. */
+  function renderTrend(ctx, cur) {
+    const cfg  = ctx.config;
+    const base = ctx._trendBase;
+    const root = ctx.shadowRoot;
+    if (!cfg.show_trend || !root) return;
+    if (!Number.isFinite(base) || !Number.isFinite(cur)) {
+      ctx._trendEl?.remove();
+      ctx._trendEl = null;
+      return;
+    }
+
+    const diff = cur - base;
+    let text, digits;
+    // A relative change from 0 is meaningless: fall back to the absolute delta.
+    if (cfg.trend_mode === 'percent' && base !== 0) {
+      digits = Math.abs((diff / base) * 100).toFixed(1);
+      text   = `${digits}%`;
+    } else {
+      const st   = ctx._hass?.states[cfg.entity];
+      const unit = cfg.unit || (cfg.attribute ? '' : st?.attributes.unit_of_measurement) || '';
+      digits = Math.abs(diff).toFixed(cfg.decimals || 0);
+      text   = withUnit(digits, unit);
+    }
+    // Stable when the change rounds to zero at the displayed precision, so a
+    // 0.001 drift does not show as a rising arrow.
+    const dir = Number(digits) === 0 ? 0 : Math.sign(diff);
+
+    let el = ctx._trendEl;
+    if (!el || !root.contains(el)) {
+      el = document.createElement('div');
+      el.className = `trend-indicator trend-${cfg.trend_position}`;
+      if (cfg.trend_font_size)  el.style.fontSize   = cfg.trend_font_size;
+      if (cfg.trend_background) el.style.background = cfg.trend_background;
+      el.innerHTML = '<span class="trend-arrow"></span><span class="trend-value"></span>';
+      if (cfg.trend_show_period) {
+        const p = document.createElement('span');
+        p.className = 'trend-period';
+        p.textContent = trendPeriodLabel(cfg.trend_hours);
+        el.appendChild(p);
+      }
+      const title = root.querySelector('.title');
+      if (cfg.trend_position === 'below-title' && title) title.after(el);
+      else root.querySelector('.gauge-card')?.appendChild(el);
+      ctx._trendEl = el;
+    }
+    const arrow = el.querySelector('.trend-arrow');
+    arrow.textContent = dir > 0 ? '↑' : dir < 0 ? '↓' : '→';
+    arrow.style.color = dir > 0 ? cfg.trend_up_color : dir < 0 ? cfg.trend_down_color : cfg.trend_stable_color;
+    el.querySelector('.trend-value').textContent = text;
+    const dec = cfg.decimals || 0;
+    el.title = `${trendPeriodLabel(cfg.trend_hours)}: ${base.toFixed(dec)} → ${cur.toFixed(dec)}`;
   }
 
   // ── Visual Editor ────────────────────────────────────────────────────────────
@@ -1148,16 +1316,37 @@
       // because _change() updates _config immediately before HA calls setConfig.
       // `alarms` is deliberately absent: the alarms editor redraws itself, a full
       // rebuild on every keystroke would steal focus.
+      // `bidirectional` / `show_trend` are absent too: their fields are toggled in
+      // place by _showWhen(), so they never depend on HA calling setConfig back.
       const STRUCTURAL = ['theme', 'center_shadow', 'entity', 'led_shape'];
       if (STRUCTURAL.some(k => (this._builtConfig || {})[k] !== config[k])) this._build();
+      else this._syncDependents();   // e.g. show_trend changed from the YAML editor
     }
 
     _change(key, value) {
       this._config = { ...this._config, [key]: value };
+      this._syncDependents(key);
       this.dispatchEvent(new CustomEvent('config-changed', {
         detail: { config: this._config },
         bubbles: true, composed: true,
       }));
+    }
+
+    /**
+     * Show `el` only while the boolean `key` equals `when`. Updated live from
+     * _change(), without rebuilding the editor.
+     */
+    _showWhen(key, el, when = true) {
+      this._dependents.push({ key, el, when });
+      el.hidden = (this._config[key] === true) !== when;
+      return el;
+    }
+
+    /** Re-apply visibility for `key`, or for every dependent when omitted. */
+    _syncDependents(key) {
+      (this._dependents || []).forEach(d => {
+        if (key === undefined || d.key === key) d.el.hidden = (this._config[d.key] === true) !== d.when;
+      });
     }
 
     // Create a ha-selector field
@@ -1180,6 +1369,14 @@
       el.addEventListener('value-changed', e => { e.stopPropagation(); this._change(key, e.detail.value); });
       wrap.appendChild(el);
       return wrap;
+    }
+
+    // Stack of fields that can be shown / hidden as one block
+    _group(...fields) {
+      const g = document.createElement('div');
+      g.className = 'group';
+      fields.forEach(f => f && g.appendChild(f));
+      return g;
     }
 
     // Create a row of fields (grid)
@@ -1218,7 +1415,9 @@
       return el;
     }
 
-    _colorField(key, label) {
+    /** `defaultColor`: the color applied when the field is empty (default: the theme's). */
+    _colorField(key, label, defaultColor) {
+      const emptyTxt = defaultColor ? `(default ${defaultColor})` : '(theme color)';
       const wrap = document.createElement('div');
       wrap.className = 'field';
       if (label) {
@@ -1235,18 +1434,18 @@
 
       const picker = document.createElement('input');
       picker.type = 'color';
-      picker.value = isHex ? currentVal : '#ffffff';
+      picker.value = isHex ? currentVal : (defaultColor || '#ffffff');
       picker.className = 'color-field-picker';
       picker.title = 'Choose a color';
 
       const valTxt = document.createElement('span');
       valTxt.className = 'color-field-val';
-      valTxt.textContent = currentVal || '(theme color)';
+      valTxt.textContent = currentVal || emptyTxt;
 
       const clearBtn = document.createElement('button');
       clearBtn.textContent = '✕';
       clearBtn.className = 'color-field-clear';
-      clearBtn.title = 'Reset (theme color)';
+      clearBtn.title = `Reset ${emptyTxt}`;
       clearBtn.style.visibility = currentVal ? 'visible' : 'hidden';
 
       picker.addEventListener('input', e => {
@@ -1256,8 +1455,8 @@
       });
       clearBtn.addEventListener('click', () => {
         this._change(key, null);
-        picker.value = '#ffffff';
-        valTxt.textContent = '(theme color)';
+        picker.value = defaultColor || '#ffffff';
+        valTxt.textContent = emptyTxt;
         clearBtn.style.visibility = 'hidden';
       });
 
@@ -1735,6 +1934,40 @@
       return wrap;
     }
 
+    /** Trend options, shown only while show_trend is on. */
+    _buildTrendFields() {
+      const group = document.createElement('div');
+      group.className = 'group';
+      group.append(
+        this._row(2,
+          this._sel('trend_mode', { select: { mode: 'dropdown', options: [
+            { value: 'percent',  label: 'Percent (relative)' },
+            { value: 'absolute', label: 'Absolute (sensor unit)' },
+          ]}}, 'Variation', 'percent'),
+          this._sel('trend_position', { select: { mode: 'dropdown', options: [
+            { value: 'bottom-right', label: 'Bottom right' },
+            { value: 'bottom-left',  label: 'Bottom left' },
+            { value: 'top-right',    label: 'Top right' },
+            { value: 'top-left',     label: 'Top left' },
+            { value: 'below-title',  label: 'Below the title' },
+          ]}}, 'Position', 'bottom-right'),
+        ),
+        this._row(3,
+          this._sel('trend_hours',           { number: { min: 1, max: 720, step: 1, mode: 'box', unit_of_measurement: 'h' } }, 'Period', 24),
+          this._sel('trend_update_interval', { number: { min: 0, max: 3600, step: 60, mode: 'box', unit_of_measurement: 's' } }, 'Refresh (0 = once)', 300),
+          this._sel('trend_show_period',     { boolean: {} }, 'Show period', false),
+        ),
+        this._row(2,
+          this._sel('trend_font_size',  { text: {} }, 'Font size', '12px'),
+          this._sel('trend_background', { text: {} }, 'Background (CSS)', 'rgba(0,0,0,.6)'),
+        ),
+        this._colorField('trend_up_color',     'Rising arrow color',  '#4caf50'),
+        this._colorField('trend_down_color',   'Falling arrow color', '#f44336'),
+        this._colorField('trend_stable_color', 'Stable arrow color',  '#ffeb3b'),
+      );
+      return this._showWhen('show_trend', group);
+    }
+
     /** Color mode select + a help text that follows the selected mode. */
     _buildSeverityModeField() {
       const BLEND_NOTE = ' Colors must be resolvable (hex, name, rgb(), hsl()) — a var(--…) color falls back to steps.';
@@ -1835,6 +2068,7 @@
 
     _build() {
       this._builtConfig = { ...this._config };
+      this._dependents  = [];
       const shadow = this.shadowRoot;
       const cfg    = this._config;
 
@@ -1852,6 +2086,8 @@
         .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
         .field-label { font-size: 11px; font-weight: 600; color: var(--secondary-text-color); text-transform: uppercase; letter-spacing: 0.4px; }
         .row { display: grid; gap: 10px; }
+        .group { display: flex; flex-direction: column; gap: 10px; }
+        [hidden] { display: none !important; }
         .cols-1 { grid-template-columns: 1fr; }
         .cols-2 { grid-template-columns: 1fr 1fr; }
         .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
@@ -1935,6 +2171,10 @@
           this._sel('leds_count',   { number: { min: 20, max: 300, step: 5, mode: 'slider' } }, 'LED count', 100),
           this._sel('bidirectional', { boolean: {} }, 'Bidirectional mode', false),
         ),
+        this._showWhen('bidirectional', this._group(
+          this._sel('bidirectional_reference', { number: { mode: 'box', step: 'any' } }, 'Bidirectional reference value'),
+          this._info('LEDs light up from this value, in the sensor unit. Empty: 0 when it lies between min and max, otherwise the midpoint.'),
+        )),
         this._sel('led_shape', { select: { mode: 'dropdown', options: [
           { value: 'round', label: 'Round (LED)' },
           { value: 'rect',  label: 'Rectangle (VU meter)' },
@@ -2077,9 +2317,17 @@
         this._buildButtonsEditor(),
       ));
 
-      // ── Trend & Action ───────────────────────────────────────────────────────
-      root.appendChild(this._section('Trend & Click action',
-        this._sel('show_trend', { boolean: {} }, 'Show 24h trend', false),
+      // ── Trend ────────────────────────────────────────────────────────────────
+      root.appendChild(this._section('Trend',
+        this._sel('show_trend', { boolean: {} }, 'Show trend', false),
+        this._showWhen('show_trend', this._info(
+          'Turn on to show the change over a period. Then choose: percent or sensor unit, ' +
+          'position (corners or below the title), period, refresh interval and arrow colors.'), false),
+        this._buildTrendFields(),
+      ));
+
+      // ── Click action ─────────────────────────────────────────────────────────
+      root.appendChild(this._section('Click action',
         this._sel('tap_action', { ui_action: { default_action: 'more-info' } }, 'Click action'),
       ));
 
@@ -2144,6 +2392,7 @@
         if (this.updateTimer)         clearTimeout(this.updateTimer);
         if (this.animationInterval)   clearInterval(this.animationInterval);
         stopCenterShadowPulsation(this);
+        stopTrend(this);
         if (this.intersectionObserver) { this.intersectionObserver.disconnect(); this.intersectionObserver = null; }
       }
 
@@ -2157,6 +2406,8 @@
       this.activeAlarms        = [];
       this.buttonsInitialized  = false;
       this.trendInitialized    = false;
+      this._trendBase          = NaN;
+      this._trendEl            = null;
 
       if (!this.shadowRoot) this.attachShadow({ mode: 'open' });
       render(this);
@@ -2187,7 +2438,7 @@
       if (this._hass) {
         this._createButtons();
         this.buttonsInitialized = true;
-        showTrendIndicator(this);
+        startTrend(this);
         this.trendInitialized = true;
         updateDynamicMarkers(this, this._hass);
         this._updateGauge();
@@ -2204,9 +2455,10 @@
         this.buttonsInitialized = true;
       }
 
-      // v2.0 fix: trend indicator needs _hass — call it here, once
+      // The trend needs _hass: start it here, once — and again after a
+      // disconnect, which stops its refresh timer.
       if (!this.trendInitialized) {
-        showTrendIndicator(this);
+        startTrend(this);
         this.trendInitialized = true;
       }
 
@@ -2233,6 +2485,8 @@
       if (this.animationInterval) { clearInterval(this.animationInterval); this.animationInterval = null; }
       stopCenterShadowPulsation(this);
       this.pulsationSig = null;
+      stopTrend(this);
+      this.trendInitialized = false;
       if (this.intersectionObserver) { this.intersectionObserver.disconnect(); this.intersectionObserver = null; }
     }
   }
