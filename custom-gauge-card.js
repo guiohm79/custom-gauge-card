@@ -555,6 +555,8 @@
       led_corner_radius: Number(config.led_corner_radius) >= 0 && config.led_corner_radius !== null && config.led_corner_radius !== ''
                            ? Number(config.led_corner_radius) : 1,
       severity_mode:     SEVERITY_MODES.includes(config.severity_mode) ? config.severity_mode : 'steps',
+      // Optional permanent color scale; standard value-based fill remains the default.
+      led_display_mode:  config.led_display_mode === 'scale' ? 'scale' : 'value',
       // ── v2.5: bidirectional reference & trend ─────────────────────────────
       bidirectional_reference: finiteOrNull(config.bidirectional_reference),
       trend_mode:            TREND_MODES.includes(config.trend_mode) ? config.trend_mode : 'percent',
@@ -1075,6 +1077,25 @@
 
     const gc = ctx.shadowRoot.getElementById('gauge-container');
     if (gc) gc.style.boxShadow = cfg.enable_shadow ? `0 0 30px 2px ${color}` : '';
+
+    // Permanent scale mode: colors describe the entire range, regardless of
+    // the measured value. Dynamic markers remain responsible for indicating it.
+    if (cfg.led_display_mode === 'scale') {
+      for (let i = 0; i < ledsCount; i++) {
+        const led = ctx.shadowRoot.getElementById(`led-${i}`);
+        if (!led) continue;
+        const positionPct = ((i + 0.5) / ledsCount) * 100;
+        const segmentColor = cfg.severity_mode === 'steps'
+          ? getLedColor(positionPct, cfg.severity, min, max)
+          : getSeverityColor(cfg, positionPct, min, max, 'gradient');
+        led.style.display = '';
+        led.style.background = segmentColor;
+        led.style.boxShadow = `0 0 3px ${segmentColor}`;
+        led.style.opacity = '0.95';
+        led.classList.remove('active');
+      }
+      return;
+    }
 
     // Zero LED index: proportional to where the reference falls in [min, max], same logic as valueToArcAngle.
     const zeroFrac   = Math.max(0, Math.min(1, ((biRef ?? min) - min) / (max - min)));
@@ -2175,6 +2196,10 @@
           this._sel('bidirectional_reference', { number: { mode: 'box', step: 'any' } }, 'Bidirectional reference value'),
           this._info('LEDs light up from this value, in the sensor unit. Empty: 0 when it lies between min and max, otherwise the midpoint.'),
         )),
+        this._sel('led_display_mode', { select: { mode: 'dropdown', options: [
+          { value: 'value', label: 'Fill to current value (default)' },
+          { value: 'scale', label: 'Always show colored scale' },
+        ]}}, 'LED display mode', 'value'),
         this._sel('led_shape', { select: { mode: 'dropdown', options: [
           { value: 'round', label: 'Round (LED)' },
           { value: 'rect',  label: 'Rectangle (VU meter)' },
