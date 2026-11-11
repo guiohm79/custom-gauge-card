@@ -555,6 +555,14 @@
       led_corner_radius: Number(config.led_corner_radius) >= 0 && config.led_corner_radius !== null && config.led_corner_radius !== ''
                            ? Number(config.led_corner_radius) : 1,
       severity_mode:     SEVERITY_MODES.includes(config.severity_mode) ? config.severity_mode : 'steps',
+      // Optional permanent color scale; standard value-based fill remains the default.
+      led_display_mode:  config.led_display_mode === 'scale' ? 'scale' : 'value',
+      // An integrated cursor tracks the main entity when the LED scale is visible.
+      scale_marker:        config.scale_marker !== false,
+      scale_marker_color:  config.scale_marker_color || '#FFFFFF',
+      scale_marker_size:   Number(config.scale_marker_size) > 0 ? Number(config.scale_marker_size) : 12,
+      scale_marker_shape:  ['round', 'square', 'diamond'].includes(config.scale_marker_shape)
+                           ? config.scale_marker_shape : 'round',
       // ── v2.5: bidirectional reference & trend ─────────────────────────────
       bidirectional_reference: finiteOrNull(config.bidirectional_reference),
       trend_mode:            TREND_MODES.includes(config.trend_mode) ? config.trend_mode : 'percent',
@@ -778,14 +786,23 @@
   const DOMAIN_COLORS = { sensor:'#2196F3', input_number:'#4CAF50', climate:'#FF9800', light:'#FFC107', switch:'#9C27B0', binary_sensor:'#00BCD4' };
 
   function createDynamicMarkers(ctx) {
-    if (!ctx.config.dynamic_markers?.length) return;
-    const gauge = ctx.shadowRoot.querySelector('.gauge');
-    if (!gauge) return;
+    // Use the existing dynamic-marker renderer for the built-in scale cursor.
+    // Keys are marker indexes, allowing additional markers on the same entity.
     ctx._dynamicMarkerElements?.forEach(el => el.remove());
     ctx._dynamicMarkerElements = [];
     ctx._dynamicMarkerData = new Map();
+    const userMarkers = Array.isArray(ctx.config.dynamic_markers) ? ctx.config.dynamic_markers : [];
+    const integratedMarker = ctx.config.led_display_mode === 'scale' && ctx.config.scale_marker && ctx.config.entity
+      ? [{ entity: ctx.config.entity, attribute: ctx.config.attribute,
+           color: ctx.config.scale_marker_color, size: ctx.config.scale_marker_size,
+           shape: ctx.config.scale_marker_shape, _integratedScaleMarker: true }]
+      : [];
+    const markers = [...integratedMarker, ...userMarkers];
+    if (!markers.length) return;
+    const gauge = ctx.shadowRoot.querySelector('.gauge');
+    if (!gauge) return;
     const gaugeSize = ctx.config.gauge_size || 200;
-    ctx.config.dynamic_markers.forEach(mc => {
+    markers.forEach((mc, index) => {
       if (!mc.entity) return;
       const wrap = document.createElement('div');
       wrap.className = 'dynamic-marker-container';
@@ -793,6 +810,10 @@
       const dot = document.createElement('div');
       dot.className = 'dynamic-marker';
       dot.style.cssText = `width:${mc.size||8}px;height:${mc.size||8}px;background:${mc.color||'#4CAF50'};border-radius:50%`;
+      if (mc._integratedScaleMarker && mc.shape !== 'round') {
+        dot.style.borderRadius = mc.shape === 'diamond' ? '2px' : '3px';
+        if (mc.shape === 'diamond') dot.style.transform = 'rotate(45deg)';
+      }
       wrap.appendChild(dot);
       if (mc.label) {
         const lbl = document.createElement('div');
@@ -806,10 +827,10 @@
         vd.textContent = '-';
         wrap.appendChild(vd);
       }
-      wrap.style.cssText = `position:absolute;transform:rotate(-90deg) translateX(${gaugeSize/2-10}px);transform-origin:center center;transition:transform .3s ease-in-out`;
+      wrap.style.cssText = `position:absolute;transform:rotate(-90deg) translateX(${gaugeSize/2-10}px);transform-origin:center center;transition:transform .3s ease-in-out;opacity:0`;
       gauge.appendChild(wrap);
       ctx._dynamicMarkerElements.push(wrap);
-      ctx._dynamicMarkerData.set(mc.entity, { config: mc, element: wrap, currentAngle: -90 });
+      ctx._dynamicMarkerData.set(index, { config: mc, element: wrap, currentAngle: -90 });
     });
   }
 
@@ -820,13 +841,13 @@
             smooth_transitions:smooth=true } = ctx.config;
     const biRef = bidirectionalRef(ctx.config, min, max);
     const dur = smooth ? animDur / 1000 : 0;
-    ctx._dynamicMarkerData.forEach((md, entityId) => {
-      const entity = hass.states[entityId];
+    ctx._dynamicMarkerData.forEach(md => {
+      const entity = hass.states[md.config.entity];
       if (!entity) { md.element.style.opacity = '0'; return; }
-      md.element.style.opacity = '1';
       const rawVal = md.config.attribute ? entity.attributes[md.config.attribute] : entity.state;
       const val = Math.max(min, Math.min(max, parseFloat(rawVal)));
-      if (isNaN(val)) return;
+      if (!Number.isFinite(val)) { md.element.style.opacity = '0'; return; }
+      md.element.style.opacity = '1';
       const topDeg = valueToArcAngle(val, min, max, arcStart, arcSweep, biRef);
       const targetAngle = topDeg - 90;
       md.element.style.transition = `transform ${dur}s ease-in-out`;
@@ -1076,6 +1097,26 @@
     const gc = ctx.shadowRoot.getElementById('gauge-container');
     if (gc) gc.style.boxShadow = cfg.enable_shadow ? `0 0 30px 2px ${color}` : '';
 
+    // Permanent scale mode: colors describe the entire range. The integrated
+    // cursor tracks the primary value by default; user markers remain optional.
+    if (cfg.led_display_mode === 'scale') {
+      for (let i = 0; i < ledsCount; i++) {
+        const led = ctx.shadowRoot.getElementById(`led-${i}`);
+        if (!led) continue;
+        const positionPct = ((i + 0.5) / ledsCount) * 100;
+        const segmentColor = cfg.severity_mode === 'steps'
+          ? getLedColor(positionPct, cfg.severity, min, max)
+          : getSeverityColor(cfg, positionPct, min, max, 'gradient');
+        led.style.display = '';
+        led.style.background = segmentColor;
+        led.style.boxShadow = `0 0 3px ${segmentColor}`;
+        led.style.opacity = '0.95';
+        // Alarm CSS targets .led.active: in scale mode all LEDs are lit.
+        led.classList.add('active');
+      }
+      return;
+    }
+
     // Zero LED index: proportional to where the reference falls in [min, max], same logic as valueToArcAngle.
     const zeroFrac   = Math.max(0, Math.min(1, ((biRef ?? min) - min) / (max - min)));
     const zeroLedIdx = Math.round(zeroFrac * ledsCount);
@@ -1318,7 +1359,7 @@
       // rebuild on every keystroke would steal focus.
       // `bidirectional` / `show_trend` are absent too: their fields are toggled in
       // place by _showWhen(), so they never depend on HA calling setConfig back.
-      const STRUCTURAL = ['theme', 'center_shadow', 'entity', 'led_shape'];
+      const STRUCTURAL = ['theme', 'center_shadow', 'entity', 'led_shape', 'led_display_mode', 'scale_marker'];
       if (STRUCTURAL.some(k => (this._builtConfig || {})[k] !== config[k])) this._build();
       else this._syncDependents();   // e.g. show_trend changed from the YAML editor
     }
@@ -2175,6 +2216,25 @@
           this._sel('bidirectional_reference', { number: { mode: 'box', step: 'any' } }, 'Bidirectional reference value'),
           this._info('LEDs light up from this value, in the sensor unit. Empty: 0 when it lies between min and max, otherwise the midpoint.'),
         )),
+        this._sel('led_display_mode', { select: { mode: 'dropdown', options: [
+          { value: 'value', label: 'Fill to current value (default)' },
+          { value: 'scale', label: 'Always show colored scale' },
+        ]}}, 'LED display mode', 'value'),
+        cfg.led_display_mode === 'scale' ? this._row(2,
+          this._sel('scale_marker', { boolean: {} }, 'Show integrated value cursor', true),
+          this._sel('scale_marker_shape', { select: { mode: 'dropdown', options: [
+            { value: 'round', label: 'Round' },
+            { value: 'square', label: 'Square' },
+            { value: 'diamond', label: 'Diamond' },
+          ]}}, 'Cursor shape', 'round'),
+        ) : null,
+        cfg.led_display_mode === 'scale' && cfg.scale_marker !== false ? this._row(2,
+          this._sel('scale_marker_size', { number: { min: 4, max: 30, step: 1, mode: 'box' } }, 'Cursor size (px)', 12),
+          this._colorField('scale_marker_color', 'Cursor color', '#FFFFFF'),
+        ) : null,
+        cfg.led_display_mode === 'scale' ? this._info(
+          'Scale mode shows an integrated cursor for the primary entity. Extra dynamic markers are optional.'
+        ) : null,
         this._sel('led_shape', { select: { mode: 'dropdown', options: [
           { value: 'round', label: 'Round (LED)' },
           { value: 'rect',  label: 'Rectangle (VU meter)' },
