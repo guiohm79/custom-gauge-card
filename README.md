@@ -1503,4 +1503,37 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
+### Permanent LED color scale (`led_display_mode: scale`)
+
+Set `led_display_mode: scale` to keep every LED visible, colored according to its position on the severity scale rather than the current sensor value. The ordinary value-based LED fill remains the default.
+
+In scale mode, a **built-in value cursor is shown automatically** for the main entity. It uses the same position calculation and transitions as `dynamic_markers`, including for partial arcs and the selected primary attribute. Additional `dynamic_markers` are still supported.
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.outdoor_pm25
+min: 0
+max: 100
+led_display_mode: scale
+severity_mode: gradient
+severity:
+  - color: '#4CAF50'
+    value: 0
+  - color: '#FFEB3B'
+    value: 35
+  - color: '#F44336'
+    value: 100
+# Optional built-in cursor styling:
+scale_marker: true          # default; false hides the built-in cursor
+scale_marker_color: '#FFFFFF'
+scale_marker_size: 12
+scale_marker_shape: round   # round | square | diamond
+```
+
+In the visual editor, choose **Always show colored scale** under *LED display mode*. The cursor can be styled or hidden there as well.
+
+**Existing scale configurations:** If a custom `dynamic_markers` entry already points to the main entity, it will appear *in addition to* the new built-in cursor. Remove that entry to use the new automatic cursor, or set `scale_marker: false` to preserve the custom marker and prevent overlap.
+
+The `leds_blink` alarm also works in scale mode, blinking all permanently illuminated LEDs.
+
 
