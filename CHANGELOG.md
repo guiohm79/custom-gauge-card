@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-11-11
+
+### Added
+- `led_display_mode: value | scale` - `scale` keeps every LED lit with the color of its own position on the severity scale, whatever the current value. `steps` paints flat zones, `gradient` and `gradient_arc` blend along the ring. Contributed by Noxelot ([PR #20](https://github.com/guiohm79/custom-gauge-card/pull/20))
+- Built-in value cursor in scale mode, positioned like a dynamic marker on the gauge entity (attribute and partial arcs included): `scale_marker` (default `true`), `scale_marker_color` (default `#FFFFFF`), `scale_marker_size` (default 12), `scale_marker_shape: round | square | diamond`
+- The `leds_blink` alarm blinks the whole scale in scale mode
+- All in the visual editor under "Appearance": the cursor fields appear once "Always show colored scale" is selected
+
+### Fixed
+- With two dynamic markers on the same entity, the first one stayed stuck at the top of the gauge
+- A dynamic marker whose entity is unavailable or non-numeric is hidden instead of staying at its last position
+
+### Unchanged
+- Without `led_display_mode` the gauge renders as 2.5. Dynamic markers now appear once their first value is read, instead of flashing at the top of the gauge
+
 ## [2.5.0] - 2026-11-08
 
 ### Fixed

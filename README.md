@@ -44,6 +44,11 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 
 
 
+## What's new in v2.6
+
+- **Permanent color scale** — `led_display_mode: scale` keeps every LED lit with the color of its own position on the scale, and a built-in cursor shows the current value. Contributed by [Noxelot](https://github.com/Noxelot) in [PR #20](https://github.com/guiohm79/custom-gauge-card/pull/20). See [Permanent Color Scale](#permanent-color-scale-v26)
+- **Dynamic markers** — two markers can now track the same entity, and a marker whose entity is unavailable or non-numeric is hidden instead of staying at its last position
+
 ## What's new in v2.5
 
 - **Trend indicator fixed** — `show_trend: true` displayed nothing with recent Home Assistant versions; it now reads the history correctly ([issue #19](https://github.com/guiohm79/custom-gauge-card/issues/19))
@@ -80,6 +85,7 @@ A custom card for Home Assistant that displays your sensors as an animated and i
 - Dynamic shadow and lighting effects
 - Multi-entity alarms with four visual effects (pulsating shadow, blinking LEDs, blinking value, pulsating card border)
 - **Bidirectional display** for thermometer-style visualization with negative values
+- **Permanent color scale** with a value cursor (`led_display_mode: scale`)
 - Customizable themes (light, dark, custom)
 - Configurable arc span and start angle (`arc_sweep`, `arc_start`)
 
@@ -319,11 +325,50 @@ debounce_updates: true
 | `led_length` | number | `led_size × 2` | **v2.4:** `rect` only — radial length of the segments in pixels. Segments grow inward: their outer edge stays where round LEDs sit |
 | `led_corner_radius` | number | 1 | **v2.4:** `rect` only — corner rounding in pixels |
 | `leds_count` | number | 100 | Number of LEDs |
+| `led_display_mode` | string | `value` | **v2.6:** `value` lights the LEDs up to the current value; `scale` keeps them all lit as a permanent color scale, with a cursor on the value. See [Permanent Color Scale](#permanent-color-scale-v26) |
 | `bidirectional` | boolean | false | Enable bidirectional display (thermometer-style for negative values) |
 | `bidirectional_reference` | number | auto | **v2.5:** Bidirectional only — value the LEDs grow from, in the sensor unit. Default: 0 when it lies between `min` and `max`, otherwise the midpoint. Clamped to `[min, max]` |
 | `card_width` | string | `auto` | **NEW:** Width of the card container (e.g., "300px") |
 | `card_height` | string | `auto` | **NEW:** Height of the card container (e.g., "350px") |
 | `card_padding` | string | `16px` | **NEW:** Padding of the card container |
+
+### Permanent Color Scale (v2.6)
+
+With `led_display_mode: scale`, every LED stays lit with the color of its own position on the severity scale, whatever the current value. A built-in cursor shows the value on the ring and moves with the same transitions as the dynamic markers, on partial arcs and with `attribute` too.
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.outdoor_pm25
+name: PM2.5
+min: 0
+max: 100
+leds_count: 40
+led_display_mode: scale
+severity_mode: gradient
+severity:
+  - color: '#4CAF50'
+    value: 0
+  - color: '#FFEB3B'
+    value: 35
+  - color: '#F44336'
+    value: 100
+scale_marker_color: '#FFFFFF'
+scale_marker_size: 12
+scale_marker_shape: round
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `scale_marker` | boolean | true | Show the built-in value cursor. `false` hides it, for example to use your own dynamic marker instead |
+| `scale_marker_color` | string | `#FFFFFF` | Cursor color |
+| `scale_marker_size` | number | 12 | Cursor size in pixels |
+| `scale_marker_shape` | string | `round` | `round`, `square` or `diamond` |
+
+- **Colors:** `severity_mode: steps` paints flat zones; `gradient` and `gradient_arc` both blend the colors along the ring and look the same in this mode.
+- **LED count:** with the default 100 LEDs of 8 px, neighboring LEDs overlap and the scale reads as a continuous band. Around 40 LEDs gives distinct dots.
+- **Dynamic markers** still work on top of the scale. A dynamic marker on the gauge entity is drawn in addition to the built-in cursor: remove it, or set `scale_marker: false`.
+- **Alarms:** `leds_blink` blinks the whole scale.
+- **Visual editor:** *Appearance* → *LED display mode* → **Always show colored scale**. The cursor settings appear right below.
 
 ### Themes
 
@@ -1502,38 +1547,5 @@ If you like this card, please:
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
-
-### Permanent LED color scale (`led_display_mode: scale`)
-
-Set `led_display_mode: scale` to keep every LED visible, colored according to its position on the severity scale rather than the current sensor value. The ordinary value-based LED fill remains the default.
-
-In scale mode, a **built-in value cursor is shown automatically** for the main entity. It uses the same position calculation and transitions as `dynamic_markers`, including for partial arcs and the selected primary attribute. Additional `dynamic_markers` are still supported.
-
-```yaml
-type: custom:custom-gauge-card
-entity: sensor.outdoor_pm25
-min: 0
-max: 100
-led_display_mode: scale
-severity_mode: gradient
-severity:
-  - color: '#4CAF50'
-    value: 0
-  - color: '#FFEB3B'
-    value: 35
-  - color: '#F44336'
-    value: 100
-# Optional built-in cursor styling:
-scale_marker: true          # default; false hides the built-in cursor
-scale_marker_color: '#FFFFFF'
-scale_marker_size: 12
-scale_marker_shape: round   # round | square | diamond
-```
-
-In the visual editor, choose **Always show colored scale** under *LED display mode*. The cursor can be styled or hidden there as well.
-
-**Existing scale configurations:** If a custom `dynamic_markers` entry already points to the main entity, it will appear *in addition to* the new built-in cursor. Remove that entry to use the new automatic cursor, or set `scale_marker: false` to preserve the custom marker and prevent overlap.
-
-The `leds_blink` alarm also works in scale mode, blinking all permanently illuminated LEDs.
 
 

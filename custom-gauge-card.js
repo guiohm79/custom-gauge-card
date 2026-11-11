@@ -1,7 +1,14 @@
 /**
- * Custom Gauge Card v2.5.0
+ * Custom Gauge Card v2.6.0
  * Home Assistant custom card — LED gauge with arc control, bidirectional mode,
  * scale ticks, 4 buttons and full shadow support.
+ *
+ * Changelog v2.6 vs v2.5 (PR #20):
+ *   - NEW  led_display_mode: value | scale — `scale` keeps every LED lit with
+ *          the color of its position, a built-in cursor shows the value
+ *   - NEW  scale_marker, scale_marker_color, scale_marker_size, scale_marker_shape
+ *   - FIX  two dynamic markers on the same entity; unavailable markers hidden
+ *   - KEEP defaults render as 2.5
  *
  * Changelog v2.5 vs v2.4 (issue #19):
  *   - FIX  show_trend displayed nothing: the history websocket answer is keyed
@@ -51,7 +58,7 @@
 !function () {
   "use strict";
 
-  const CARD_VERSION = '2.5.0';
+  const CARD_VERSION = '2.6.0';
 
   // ── Themes ──────────────────────────────────────────────────────────────────
   const THEMES = {

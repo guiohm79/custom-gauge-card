@@ -22,6 +22,7 @@ Une carte personnalisée pour Home Assistant qui affiche vos capteurs sous forme
 - Transitions fluides et douces entre les valeurs
 - Effets d'ombre et de lumière dynamiques
 - Alarmes multi-entités avec quatre effets visuels (ombre pulsante, LEDs clignotantes, valeur clignotante, bordure pulsante)
+- **Échelle de couleurs permanente** avec curseur de valeur (`led_display_mode: scale`)
 - Thèmes personnalisables (clair, sombre, personnalisé)
 
  **Zones et Marqueurs**
@@ -222,8 +223,47 @@ optimize_leds: true
 | `led_length` | number | `led_size × 2` | **v2.4 :** `rect` uniquement — longueur radiale des segments en pixels. Les segments s'allongent vers l'intérieur : leur bord extérieur reste à la place des LEDs rondes |
 | `led_corner_radius` | number | 1 | **v2.4 :** `rect` uniquement — arrondi des coins en pixels |
 | `leds_count` | number | 100 | Nombre de LEDs |
+| `led_display_mode` | string | `value` | **v2.6 :** `value` allume les LEDs jusqu'à la valeur actuelle ; `scale` les garde toutes allumées comme une échelle de couleurs permanente, avec un curseur sur la valeur. Voir [Échelle de couleurs permanente](#échelle-de-couleurs-permanente-v26) |
 | `bidirectional` | boolean | false | Mode bidirectionnel : les LEDs partent d'une valeur de référence, dans un sens au-dessus et dans l'autre en dessous |
 | `bidirectional_reference` | number | auto | **v2.5 :** Bidirectionnel uniquement — valeur d'où partent les LEDs, dans l'unité du capteur. Par défaut : 0 s'il est entre `min` et `max`, sinon le milieu. Ramenée dans `[min, max]`. La référence est placée à sa position proportionnelle sur l'arc : marqueurs, zones et graduations restent alignés |
+
+### Échelle de couleurs permanente (v2.6)
+
+Avec `led_display_mode: scale`, chaque LED reste allumée avec la couleur de sa propre position sur l'échelle des seuils, quelle que soit la valeur actuelle. Un curseur intégré indique la valeur sur l'anneau et se déplace avec les mêmes transitions que les marqueurs dynamiques, y compris sur un arc partiel et avec `attribute`.
+
+```yaml
+type: custom:custom-gauge-card
+entity: sensor.outdoor_pm25
+name: PM2.5
+min: 0
+max: 100
+leds_count: 40
+led_display_mode: scale
+severity_mode: gradient
+severity:
+  - color: '#4CAF50'
+    value: 0
+  - color: '#FFEB3B'
+    value: 35
+  - color: '#F44336'
+    value: 100
+scale_marker_color: '#FFFFFF'
+scale_marker_size: 12
+scale_marker_shape: round
+```
+
+| Option | Type | Défaut | Description |
+|--------|------|--------|-------------|
+| `scale_marker` | boolean | true | Affiche le curseur de valeur intégré. `false` le masque, par exemple pour utiliser votre propre marqueur dynamique |
+| `scale_marker_color` | string | `#FFFFFF` | Couleur du curseur |
+| `scale_marker_size` | number | 12 | Taille du curseur en pixels |
+| `scale_marker_shape` | string | `round` | `round` (rond), `square` (carré) ou `diamond` (losange) |
+
+- **Couleurs :** `severity_mode: steps` peint des zones unies ; `gradient` et `gradient_arc` fondent tous deux les couleurs le long de l'anneau et donnent le même rendu dans ce mode.
+- **Nombre de LEDs :** avec les 100 LEDs de 8 px par défaut, les LEDs voisines se chevauchent et l'échelle ressemble à une bande continue. Une quarantaine de LEDs donne des points séparés.
+- **Marqueurs dynamiques :** ils restent utilisables par-dessus l'échelle. Un marqueur dynamique sur l'entité de la jauge s'affiche en plus du curseur intégré : supprimez-le, ou mettez `scale_marker: false`.
+- **Alarmes :** `leds_blink` fait clignoter toute l'échelle.
+- **Éditeur visuel :** *Appearance* → *LED display mode* → **Always show colored scale**. Les réglages du curseur apparaissent juste en dessous.
 
 ### Thèmes
 
